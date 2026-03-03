@@ -168,15 +168,33 @@ function applyDataValidation_() {
     .build();
   proceduresSheet.getRange(2, 4, procedureRows, 1).setDataValidation(monthDayRule);
 
+  const formulaSep = getFormulaArgSeparator_();
+  const nonNegativeIntegerFormula =
+    '=OR(E2=""' +
+    formulaSep +
+    'AND(ISNUMBER(E2)' +
+    formulaSep +
+    'E2>=0' +
+    formulaSep +
+    'E2=INT(E2)))';
+  const positiveIntegerFormula =
+    '=OR(F2=""' +
+    formulaSep +
+    'AND(ISNUMBER(F2)' +
+    formulaSep +
+    'F2>=1' +
+    formulaSep +
+    'F2=INT(F2)))';
+
   const nonNegativeIntegerRule = SpreadsheetApp.newDataValidation()
-    .requireFormulaSatisfied('=OR(E2="",AND(ISNUMBER(E2),E2>=0,E2=INT(E2)))')
+    .requireFormulaSatisfied(nonNegativeIntegerFormula)
     .setAllowInvalid(false)
     .setHelpText('Podaj liczbe calkowita >= 0.')
     .build();
   proceduresSheet.getRange(2, 5, procedureRows, 1).setDataValidation(nonNegativeIntegerRule);
 
   const positiveIntegerRule = SpreadsheetApp.newDataValidation()
-    .requireFormulaSatisfied('=OR(F2="",AND(ISNUMBER(F2),F2>=1,F2=INT(F2)))')
+    .requireFormulaSatisfied(positiveIntegerFormula)
     .setAllowInvalid(false)
     .setHelpText('Podaj liczbe calkowita >= 1.')
     .build();
@@ -213,6 +231,22 @@ function applyDataValidation_() {
   clientsSheet.getRange(2, 3, clientRows, 1).insertCheckboxes();
   clientProceduresSheet.getRange(2, 4, clientProcedureRows, 1).insertCheckboxes();
   assignmentsSheet.getRange(2, 5, assignmentRows, 1).insertCheckboxes();
+}
+
+function getFormulaArgSeparator_() {
+  const candidates = [',', ';'];
+  for (let i = 0; i < candidates.length; i += 1) {
+    const sep = candidates[i];
+    try {
+      SpreadsheetApp.newDataValidation()
+        .requireFormulaSatisfied('=AND(1=1' + sep + '1=1)')
+        .build();
+      return sep;
+    } catch (error) {
+      // Sprobuj kolejny separator.
+    }
+  }
+  return ',';
 }
 
 function migrateLegacySheetNames_(spreadsheet) {
