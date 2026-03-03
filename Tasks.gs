@@ -19,9 +19,7 @@ function generateRecurringTasks(daysAhead) {
   const horizon = new Date(today.getTime());
   horizon.setDate(horizon.getDate() + toNumber_(daysAhead, DEFAULT_GENERATION_DAYS));
 
-  const procedures = getObjectRows_(SHEET_NAMES.PROCEDURES).filter((row) =>
-    toBoolean_(row.aktywna, true)
-  );
+  const procedures = getObjectRows_(SHEET_NAMES.PROCEDURES);
   const clients = getObjectRows_(SHEET_NAMES.CLIENTS).filter((row) =>
     toBoolean_(row.aktywny, true)
   );
@@ -37,43 +35,34 @@ function generateRecurringTasks(daysAhead) {
     clients.map((row) => normalizeText_(row.client_id)).filter(Boolean)
   );
 
-  const proceduresById = {};
-  procedures.forEach((row) => {
-    const id = normalizeText_(row.procedure_id);
-    if (!id) {
-      return;
-    }
-
-    const frequencyDays = toNumber_(row.czestotliwosc_dni, 0);
-    if (frequencyDays < 1) {
-      return;
-    }
-
-    proceduresById[id] = {
-      frequencyDays,
-      warningDays: Math.max(0, toNumber_(row.dni_ostrzezenia, 2)),
-    };
-  });
+  const proceduresById = buildProcedureConfigs_(procedures);
 
   const assignmentsByClient = buildAssignmentsByClient_(assignments);
   const existingKeys = new Set();
-  const lastDueByPair = {};
+  const employeeByTaskKey = {};
+  const lastTaskByPair = {};
 
   existingTasks.forEach((row) => {
     const clientId = normalizeText_(row.client_id);
     const procedureId = normalizeText_(row.procedure_id);
+    const employeeId = normalizeText_(row.employee_id);
     const dueDate = toDate_(row.due_date);
     if (!clientId || !procedureId || !dueDate) {
       return;
     }
 
-    const pairKey = clientId + '|' + procedureId;
-    if (!lastDueByPair[pairKey] || dueDate > lastDueByPair[pairKey]) {
-      lastDueByPair[pairKey] = dueDate;
-    }
+    const taskKey = normalizeText_(row.task_key) || buildTaskKey_(clientId, procedureId, dueDate);
+    existingKeys.add(taskKey);
+    employeeByTaskKey[taskKey] = employeeId;
 
-    const rowKey = normalizeText_(row.task_key) || buildTaskKey_(clientId, procedureId, dueDate);
-    existingKeys.add(rowKey);
+    const pairKey = clientId + '|' + procedureId;
+    const current = lastTaskByPair[pairKey];
+    if (!current || dueDate > current.dueDate) {
+      lastTaskByPair[pairKey] = {
+        dueDate,
+        employeeId,
+      };
+    }
   });
 
   const newRows = [];
@@ -92,34 +81,41 @@ function generateRecurringTasks(daysAhead) {
       return;
     }
 
-    const frequencyDays = Math.max(
-      1,
-      toNumber_(relation.czestotliwosc_override, procedure.frequencyDays)
-    );
     const relationStartDate = toDate_(relation.data_start) || today;
-
-    const pairKey = clientId + '|' + procedureId;
-    let nextDueDate = alignDateToWindow_(relationStartDate, today, frequencyDays);
-
-    if (lastDueByPair[pairKey] && lastDueByPair[pairKey] >= nextDueDate) {
-      nextDueDate = new Date(lastDueByPair[pairKey].getTime());
-      nextDueDate.setDate(nextDueDate.getDate() + frequencyDays);
+    const windowStart = relationStartDate > today ? relationStartDate : today;
+    if (windowStart > horizon) {
+      return;
     }
 
-    for (
-      let dueDate = new Date(nextDueDate.getTime());
-      dueDate <= horizon;
-      dueDate.setDate(dueDate.getDate() + frequencyDays)
-    ) {
-      const normalizedDueDate = normalizeDate_(dueDate);
-      const taskKey = buildTaskKey_(clientId, procedureId, normalizedDueDate);
-      if (existingKeys.has(taskKey)) {
-        continue;
+    const pairKey = clientId + '|' + procedureId;
+    let previousEmployeeId = lastTaskByPair[pairKey]
+      ? normalizeText_(lastTaskByPair[pairKey].employeeId)
+      : '';
+
+    const months = getMonthStartsBetween_(windowStart, horizon);
+    months.forEach((monthStart) => {
+      const normalizedDueDate = getDueDateForMonth_(
+        monthStart.getFullYear(),
+        monthStart.getMonth(),
+        procedure.schedule
+      );
+      if (!normalizedDueDate) {
+        return;
+      }
+      if (normalizedDueDate < windowStart || normalizedDueDate > horizon) {
+        return;
       }
 
-      const employeeId = findAssignedEmployeeForDate_(
+      const taskKey = buildTaskKey_(clientId, procedureId, normalizedDueDate);
+      if (existingKeys.has(taskKey)) {
+        previousEmployeeId = employeeByTaskKey[taskKey] || previousEmployeeId;
+        return;
+      }
+
+      const employeeId = pickNextEmployeeForDate_(
         assignmentsByClient[clientId] || [],
-        normalizedDueDate
+        normalizedDueDate,
+        previousEmployeeId
       );
 
       newRows.push([
@@ -133,10 +129,12 @@ function generateRecurringTasks(daysAhead) {
         '',
         '',
         taskKey,
-        procedure.warningDays,
+        procedure.warningDays || 0,
       ]);
+      previousEmployeeId = employeeId || previousEmployeeId;
       existingKeys.add(taskKey);
-    }
+      employeeByTaskKey[taskKey] = employeeId;
+    });
   });
 
   if (newRows.length > 0) {
@@ -153,7 +151,7 @@ function markTaskAsDone_(taskId) {
   const sheet = getSheetOrThrow_(SHEET_NAMES.TASKS);
   const lastRow = sheet.getLastRow();
   if (lastRow < 2) {
-    return false;
+    return null;
   }
 
   const taskIdRange = sheet.getRange(2, 1, lastRow - 1, 1);
@@ -163,13 +161,26 @@ function markTaskAsDone_(taskId) {
     .findNext();
 
   if (!match) {
-    return false;
+    return null;
   }
 
   const row = match.getRow();
+  const rowValues = sheet.getRange(row, 1, 1, HEADERS.TASKS.length).getValues()[0];
+  const completedTask = {
+    taskId: normalizeText_(rowValues[0]),
+    clientId: normalizeText_(rowValues[1]),
+    procedureId: normalizeText_(rowValues[2]),
+    employeeId: normalizeText_(rowValues[3]),
+    dueDate: toDate_(rowValues[4]),
+    status: normalizeText_(rowValues[5]),
+  };
+  if (completedTask.status === STATUS.DONE) {
+    return null;
+  }
+
   sheet.getRange(row, 6).setValue(STATUS.DONE);
   sheet.getRange(row, 8).setValue(new Date());
-  return true;
+  return completedTask;
 }
 
 function updateTaskNote_(taskId, note) {
@@ -209,41 +220,181 @@ function buildAssignmentsByClient_(assignmentRows) {
       employeeId: employeeId,
       fromDate: toDate_(row.data_od),
       toDate: toDate_(row.data_do),
+      order: Math.max(1, toNumber_(row.kolejnosc, 9999)),
     });
   });
 
   Object.keys(map).forEach((clientId) => {
     map[clientId].sort((left, right) => {
-      const leftTime = left.fromDate ? left.fromDate.getTime() : 0;
-      const rightTime = right.fromDate ? right.fromDate.getTime() : 0;
-      return rightTime - leftTime;
+      if (left.order !== right.order) {
+        return left.order - right.order;
+      }
+      return left.employeeId.localeCompare(right.employeeId);
     });
   });
 
   return map;
 }
 
-function findAssignedEmployeeForDate_(clientAssignments, dueDate) {
-  if (!clientAssignments || clientAssignments.length === 0) {
+function pickNextEmployeeForDate_(clientAssignments, dueDate, previousEmployeeId) {
+  const eligibleEmployeeIds = getEligibleEmployeeIdsForDate_(
+    clientAssignments,
+    dueDate
+  );
+  if (eligibleEmployeeIds.length === 0) {
     return '';
   }
 
-  const targetDate = normalizeDate_(dueDate);
+  if (!previousEmployeeId) {
+    return eligibleEmployeeIds[0];
+  }
 
-  const exactMatch = clientAssignments.find((assignment) => {
+  const currentIdx = eligibleEmployeeIds.indexOf(previousEmployeeId);
+  if (currentIdx === -1) {
+    return eligibleEmployeeIds[0];
+  }
+  if (eligibleEmployeeIds.length === 1) {
+    return eligibleEmployeeIds[0];
+  }
+  return eligibleEmployeeIds[(currentIdx + 1) % eligibleEmployeeIds.length];
+}
+
+function getEligibleEmployeeIdsForDate_(clientAssignments, dueDate) {
+  if (!clientAssignments || clientAssignments.length === 0) {
+    return [];
+  }
+
+  const targetDate = normalizeDate_(dueDate);
+  const eligibleAssignments = clientAssignments.filter((assignment) => {
     const startsBeforeOrOn = !assignment.fromDate || assignment.fromDate <= targetDate;
     const endsAfterOrOn = !assignment.toDate || assignment.toDate >= targetDate;
     return startsBeforeOrOn && endsAfterOrOn;
   });
 
-  if (exactMatch) {
-    return exactMatch.employeeId;
+  if (eligibleAssignments.length === 0) {
+    return [];
   }
 
-  const fallback = clientAssignments.find(
-    (assignment) => !assignment.fromDate && !assignment.toDate
+  const sorted = eligibleAssignments.sort((left, right) => {
+    if (left.order !== right.order) {
+      return left.order - right.order;
+    }
+    return left.employeeId.localeCompare(right.employeeId);
+  });
+
+  const unique = [];
+  const seen = new Set();
+  sorted.forEach((assignment) => {
+    if (seen.has(assignment.employeeId)) {
+      return;
+    }
+    seen.add(assignment.employeeId);
+    unique.push(assignment.employeeId);
+  });
+  return unique;
+}
+
+function buildProcedureConfigs_(procedureRows) {
+  const map = {};
+  procedureRows.forEach((row) => {
+    if (!toBoolean_(row.aktywna, true)) {
+      return;
+    }
+
+    const procedureId = normalizeText_(row.procedure_id);
+    if (!procedureId) {
+      return;
+    }
+
+    const schedule = parseScheduleDay_(row.dzien_miesiaca);
+    if (!schedule) {
+      return;
+    }
+
+    map[procedureId] = {
+      schedule,
+      warningDays: Math.max(0, toNumber_(row.dni_ostrzezenia, 2)),
+    };
+  });
+  return map;
+}
+
+function createNextTaskFromCompleted_(completedTask) {
+  if (
+    !completedTask ||
+    !completedTask.clientId ||
+    !completedTask.procedureId ||
+    !completedTask.dueDate
+  ) {
+    return false;
+  }
+
+  const proceduresById = buildProcedureConfigs_(getObjectRows_(SHEET_NAMES.PROCEDURES));
+  const procedureConfig = proceduresById[completedTask.procedureId];
+  if (!procedureConfig) {
+    return false;
+  }
+
+  const nextDueDate = getNextMonthlyDueDate_(
+    completedTask.dueDate,
+    procedureConfig.schedule
   );
-  return fallback ? fallback.employeeId : '';
+  if (!nextDueDate) {
+    return false;
+  }
+
+  const taskKey = buildTaskKey_(
+    completedTask.clientId,
+    completedTask.procedureId,
+    nextDueDate
+  );
+  const taskRows = getObjectRows_(SHEET_NAMES.TASKS);
+  const exists = taskRows.some((row) => {
+    const existingClientId = normalizeText_(row.client_id);
+    const existingProcedureId = normalizeText_(row.procedure_id);
+    const dueDate = toDate_(row.due_date);
+    if (!existingClientId || !existingProcedureId || !dueDate) {
+      return false;
+    }
+
+    const existingKey =
+      normalizeText_(row.task_key) ||
+      buildTaskKey_(existingClientId, existingProcedureId, dueDate);
+    return existingKey === taskKey;
+  });
+  if (exists) {
+    return false;
+  }
+
+  const assignments = getObjectRows_(SHEET_NAMES.ASSIGNMENTS).filter((row) =>
+    toBoolean_(row.aktywna, true)
+  );
+  const assignmentsByClient = buildAssignmentsByClient_(assignments);
+  const employeeId = pickNextEmployeeForDate_(
+    assignmentsByClient[completedTask.clientId] || [],
+    nextDueDate,
+    completedTask.employeeId
+  );
+
+  const row = [
+    Utilities.getUuid(),
+    completedTask.clientId,
+    completedTask.procedureId,
+    employeeId,
+    nextDueDate,
+    STATUS.NEW,
+    new Date(),
+    '',
+    '',
+    taskKey,
+    procedureConfig.warningDays || 0,
+  ];
+
+  const taskSheet = getSheetOrThrow_(SHEET_NAMES.TASKS);
+  taskSheet
+    .getRange(taskSheet.getLastRow() + 1, 1, 1, HEADERS.TASKS.length)
+    .setValues([row]);
+  return true;
 }
 
 function onEdit(e) {
@@ -267,7 +418,8 @@ function onEdit(e) {
       return;
     }
 
-    markTaskAsDone_(taskId);
+    const completedTask = markTaskAsDone_(taskId);
+    createNextTaskFromCompleted_(completedTask);
     refreshMyTasksView();
     refreshManagerDashboard();
     return;

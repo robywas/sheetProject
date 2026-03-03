@@ -24,7 +24,8 @@ Po uruchomieniu `setupWorkbook()` skrypt zaklada:
 ## 2) Kluczowe funkcje
 
 - `setupWorkbook()`  
-  Zaklada/odswieza zakladki i naglowki.
+  Zaklada/odswieza zakladki i naglowki oraz migruje stare nazwy zakladek
+  `Pacjenci` -> `Klienci` i `Pacjenci_Procedury` -> `Klienci_Procedury`.
 
 - `seedSampleData()`  
   Uzupelnia arkusz przykladowymi danymi (tylko gdy zakladki sa puste poza naglowkiem).
@@ -32,8 +33,8 @@ Po uruchomieniu `setupWorkbook()` skrypt zaklada:
 - `generateTasks30Days()`  
   Generuje zadania cykliczne na 30 dni do przodu:
   - uwzglednia aktywne relacje klient-procedura,
-  - uwzglednia czestotliwosc procedury (lub override),
-  - przypisuje pracownika wg zakladki `Przypisania`,
+  - uwzglednia `dzien_miesiaca` procedury (`1..31` lub `OSTATNI`),
+  - przypisuje pracownika wg zakladki `Przypisania` (z rotacja wg `kolejnosc`),
   - nie duplikuje zadan (klucz: `client_id|procedure_id|due_date`).
 
 - `refreshMyTasksView()`  
@@ -49,7 +50,10 @@ Po uruchomieniu `setupWorkbook()` skrypt zaklada:
   - obciazenie pracownikow.
 
 - `onEdit(e)`  
-  Gdy pracownik zaznaczy checkbox w `Moje_zadania`, zadanie przechodzi do statusu `WYKONANE`.
+  Gdy pracownik zaznaczy checkbox w `Moje_zadania`:
+  - zadanie przechodzi do statusu `WYKONANE`,
+  - automatycznie tworzy sie kolejne zadanie (nastepny miesiac),
+  - nowe zadanie jest przypisywane do kolejnego pracownika z puli klienta.
 
 ## 3) Interfejsy
 
@@ -92,9 +96,12 @@ Panele boczne:
 ## 5) Ustawienia produkcyjne (zalecane)
 
 1. W `Pracownicy` uzupelnij poprawne emaile kont Google.
-2. W `Przypisania` utrzymuj zakresy dat przypisania klienta do pracownika.
-3. Dodaj trigger czasowy (np. codziennie 06:00) dla `generateTasks30Days()`.
-4. Ustal workflow statusow (`NOWE`, `W_TRAKCIE`, `WYKONANE`) zgodny z Twoim procesem.
+2. W `Procedury` ustaw `dzien_miesiaca` jako liczbe `1..31` lub `OSTATNI`.
+3. W `Przypisania` utrzymuj zakresy dat przypisania klienta do pracownika
+   i (opcjonalnie) `kolejnosc` do sterowania rotacja.
+4. Po dodaniu klienta powiaz go recznie z procedurami w `Klienci_Procedury`.
+5. Dodaj trigger czasowy (np. codziennie 06:00) dla `generateTasks30Days()`.
+6. Ustal workflow statusow (`NOWE`, `W_TRAKCIE`, `WYKONANE`) zgodny z Twoim procesem.
 
 ## 6) Rozszerzenia, ktore latwo dodac
 

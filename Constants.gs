@@ -14,7 +14,7 @@ const HEADERS = Object.freeze({
     'procedure_id',
     'procedura',
     'opis',
-    'czestotliwosc_dni',
+    'dzien_miesiaca',
     'dni_ostrzezenia',
     'aktywna',
   ],
@@ -24,10 +24,16 @@ const HEADERS = Object.freeze({
     'client_id',
     'procedure_id',
     'data_start',
-    'czestotliwosc_override',
     'aktywna',
   ],
-  ASSIGNMENTS: ['client_id', 'employee_id', 'data_od', 'data_do', 'aktywna'],
+  ASSIGNMENTS: [
+    'client_id',
+    'employee_id',
+    'data_od',
+    'data_do',
+    'aktywna',
+    'kolejnosc',
+  ],
   TASKS: [
     'task_id',
     'client_id',
@@ -70,3 +76,9 @@ const MY_TASKS_COL = Object.freeze({
 
 const DEFAULT_GENERATION_DAYS = 30;
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+const SCHEDULE_LAST_DAY_TOKEN = 'OSTATNI';
+
+const LEGACY_SHEET_NAMES = Object.freeze({
+  CLIENTS: 'Pacjenci',
+  CLIENT_PROCEDURES: 'Pacjenci_Procedury',
+});

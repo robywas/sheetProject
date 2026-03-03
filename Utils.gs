@@ -113,15 +113,68 @@ function getLookupMap_(rows, keyField, valueField) {
   return map;
 }
 
-function alignDateToWindow_(startDate, windowStartDate, frequencyDays) {
-  const aligned = normalizeDate_(startDate);
-  const windowStart = normalizeDate_(windowStartDate);
-  if (aligned >= windowStart) {
-    return aligned;
+function parseScheduleDay_(value) {
+  const raw = normalizeText_(value).toUpperCase();
+  if (!raw) {
+    return null;
   }
 
-  const diff = Math.floor((windowStart - aligned) / ONE_DAY_MS);
-  const steps = Math.ceil(diff / frequencyDays);
-  aligned.setDate(aligned.getDate() + steps * frequencyDays);
-  return aligned;
+  if (raw === SCHEDULE_LAST_DAY_TOKEN || raw === 'LAST') {
+    return { mode: 'last' };
+  }
+
+  const day = toNumber_(raw, 0);
+  if (day >= 1 && day <= 31) {
+    return { mode: 'day', day };
+  }
+  return null;
+}
+
+function getFirstDayOfMonth_(date) {
+  const normalized = normalizeDate_(date);
+  return new Date(normalized.getFullYear(), normalized.getMonth(), 1);
+}
+
+function getLastDayOfMonth_(year, monthZeroBased) {
+  return new Date(year, monthZeroBased + 1, 0).getDate();
+}
+
+function getDueDateForMonth_(year, monthZeroBased, schedule) {
+  if (!schedule) {
+    return null;
+  }
+
+  const lastDay = getLastDayOfMonth_(year, monthZeroBased);
+  if (schedule.mode === 'last') {
+    return normalizeDate_(new Date(year, monthZeroBased, lastDay));
+  }
+
+  if (schedule.mode === 'day') {
+    const targetDay = Math.min(lastDay, Math.max(1, schedule.day));
+    return normalizeDate_(new Date(year, monthZeroBased, targetDay));
+  }
+
+  return null;
+}
+
+function getNextMonthlyDueDate_(dueDate, schedule) {
+  const normalized = normalizeDate_(dueDate);
+  const nextMonth = new Date(normalized.getFullYear(), normalized.getMonth() + 1, 1);
+  return getDueDateForMonth_(nextMonth.getFullYear(), nextMonth.getMonth(), schedule);
+}
+
+function getMonthStartsBetween_(startDate, endDate) {
+  const start = getFirstDayOfMonth_(startDate);
+  const end = getFirstDayOfMonth_(endDate);
+  const months = [];
+
+  for (
+    let cursor = new Date(start.getTime());
+    cursor <= end;
+    cursor = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1)
+  ) {
+    months.push(new Date(cursor.getTime()));
+  }
+
+  return months;
 }
