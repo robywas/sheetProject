@@ -74,7 +74,23 @@ function refreshMyTasksView() {
 
 function refreshManagerDashboard() {
   const dashboardSheet = getSheetOrThrow_(SHEET_NAMES.MANAGER_DASHBOARD);
-  dashboardSheet.clear();
+  const previousFilters = readManagerFilters_(dashboardSheet);
+
+  const employeeRows = getObjectRows_(SHEET_NAMES.EMPLOYEES).filter((row) =>
+    toBoolean_(row.aktywny, true)
+  );
+  const employeeLookups = buildManagerEmployeeLookups_(employeeRows);
+  prepareManagerDashboardLayout_(
+    dashboardSheet,
+    employeeLookups.names,
+    previousFilters
+  );
+
+  const filters = readManagerFilters_(dashboardSheet);
+  const selectedEmployeeId =
+    filters.employeeName === MANAGER_FILTER.ALL_EMPLOYEES
+      ? ''
+      : employeeLookups.byName[filters.employeeName] || '';
 
   const tasks = getObjectRows_(SHEET_NAMES.TASKS).map((row) => {
     const dueDate = toDate_(row.due_date);
@@ -90,27 +106,32 @@ function refreshManagerDashboard() {
     };
   });
 
+  const tasksInScope = tasks
+    .filter((task) =>
+      selectedEmployeeId ? task.employeeId === selectedEmployeeId : true
+    )
+    .filter((task) => matchesManagerStatusFilter_(task, filters.status));
+
   const today = normalizeDate_(new Date());
   const dueSoonThreshold = new Date(today.getTime());
-  dueSoonThreshold.setDate(dueSoonThreshold.getDate() + 7);
+  dueSoonThreshold.setDate(dueSoonThreshold.getDate() + filters.horizonDays);
   const riskThreshold = new Date(today.getTime());
-  riskThreshold.setDate(riskThreshold.getDate() + 2);
+  riskThreshold.setDate(riskThreshold.getDate() + filters.riskDays);
   const last30Days = new Date(today.getTime());
   last30Days.setDate(last30Days.getDate() - 30);
 
-  const openTasks = tasks.filter((task) => task.status !== STATUS.DONE);
+  const openTasks = tasksInScope.filter((task) => task.status !== STATUS.DONE);
   const overdueTasks = openTasks.filter((task) => task.dueDate && task.dueDate < today);
   const dueSoonTasks = openTasks.filter(
     (task) => task.dueDate && task.dueDate >= today && task.dueDate <= dueSoonThreshold
   );
-  const completedLast30Days = tasks.filter(
+  const completedLast30Days = tasksInScope.filter(
     (task) => task.status === STATUS.DONE && task.completedAt && task.completedAt >= last30Days
   );
-  const completionRate = tasks.length
-    ? Math.round((completedLast30Days.length / tasks.length) * 100)
+  const completionRate = tasksInScope.length
+    ? Math.round((completedLast30Days.length / tasksInScope.length) * 100)
     : 0;
 
-  dashboardSheet.getRange('A1').setValue('Dashboard managera');
   dashboardSheet.getRange('A2').setValue(
     'Aktualizacja: ' +
       Utilities.formatDate(
@@ -119,18 +140,37 @@ function refreshManagerDashboard() {
         'yyyy-MM-dd HH:mm:ss'
       )
   );
+  dashboardSheet.getRange('A3').setValue(
+    'Aktywne filtry: status=' +
+      filters.status +
+      ', pracownik=' +
+      filters.employeeName +
+      ', horyzont=' +
+      filters.horizonDays +
+      ' dni, prog zagrozenia=' +
+      filters.riskDays +
+      ' dni'
+  );
 
   const kpiTable = [
     ['Wskaznik', 'Wartosc'],
     ['Otwarte zadania', openTasks.length],
     ['Przeterminowane', overdueTasks.length],
-    ['Termin <= 7 dni', dueSoonTasks.length],
+    ['Termin <= ' + filters.horizonDays + ' dni', dueSoonTasks.length],
     ['Ukonczone (30 dni)', completedLast30Days.length],
     ['Wskaznik realizacji', completionRate + '%'],
   ];
 
-  dashboardSheet.getRange(4, 1, kpiTable.length, 2).setValues(kpiTable);
-  dashboardSheet.getRange(4, 1, 1, 2).setFontWeight('bold').setBackground('#f1f3f4');
+  const kpiStartRow = 10;
+  dashboardSheet.getRange(kpiStartRow, 1).setValue('KPI');
+  dashboardSheet.getRange(kpiStartRow, 1).setFontWeight('bold');
+  dashboardSheet
+    .getRange(kpiStartRow + 1, 1, kpiTable.length, 2)
+    .setValues(kpiTable);
+  dashboardSheet
+    .getRange(kpiStartRow + 1, 1, 1, 2)
+    .setFontWeight('bold')
+    .setBackground('#f1f3f4');
 
   const clientNames = getLookupMap_(
     getObjectRows_(SHEET_NAMES.CLIENTS),
@@ -142,11 +182,7 @@ function refreshManagerDashboard() {
     'procedure_id',
     'procedura'
   );
-  const employeeNames = getLookupMap_(
-    getObjectRows_(SHEET_NAMES.EMPLOYEES),
-    'employee_id',
-    'pracownik'
-  );
+  const employeeNames = getLookupMap_(employeeRows, 'employee_id', 'pracownik');
 
   const riskTasks = openTasks
     .filter((task) => task.dueDate && task.dueDate <= riskThreshold)
@@ -164,7 +200,7 @@ function refreshManagerDashboard() {
       ];
     });
 
-  const riskStartRow = 12;
+  const riskStartRow = kpiStartRow + kpiTable.length + 4;
   const riskHeaders = [
     'task_id',
     'termin',
@@ -213,7 +249,12 @@ function refreshManagerDashboard() {
     }
   });
 
-  const loadTableHeaders = ['pracownik', 'otwarte', 'przeterminowane', 'termin <= 7 dni'];
+  const loadTableHeaders = [
+    'pracownik',
+    'otwarte',
+    'przeterminowane',
+    'termin <= ' + filters.horizonDays + ' dni',
+  ];
   dashboardSheet
     .getRange(loadStartRow + 1, 1, 1, loadTableHeaders.length)
     .setValues([loadTableHeaders])
@@ -237,7 +278,208 @@ function refreshManagerDashboard() {
     dashboardSheet.getRange(loadStartRow + 2, 1).setValue('Brak danych o obciazeniu.');
   }
 
+  const clientLoadStartRow = loadStartRow + Math.max(loadRows.length, 1) + 5;
+  dashboardSheet.getRange(clientLoadStartRow, 1).setValue('Podsumowanie klientow');
+  dashboardSheet.getRange(clientLoadStartRow, 1).setFontWeight('bold');
+
+  const clientLoadHeaders = ['klient', 'otwarte', 'przeterminowane', 'termin <= horyzont'];
+  dashboardSheet
+    .getRange(clientLoadStartRow + 1, 1, 1, clientLoadHeaders.length)
+    .setValues([clientLoadHeaders])
+    .setFontWeight('bold')
+    .setBackground('#f1f3f4');
+
+  const clientLoadMap = {};
+  openTasks.forEach((task) => {
+    const key = task.clientId || 'NIEPRZYPISANY';
+    if (!clientLoadMap[key]) {
+      clientLoadMap[key] = { open: 0, overdue: 0, dueSoon: 0 };
+    }
+    clientLoadMap[key].open += 1;
+    if (task.dueDate && task.dueDate < today) {
+      clientLoadMap[key].overdue += 1;
+    }
+    if (task.dueDate && task.dueDate >= today && task.dueDate <= dueSoonThreshold) {
+      clientLoadMap[key].dueSoon += 1;
+    }
+  });
+
+  const clientLoadRows = Object.keys(clientLoadMap)
+    .sort()
+    .map((clientId) => [
+      clientNames[clientId] || clientId,
+      clientLoadMap[clientId].open,
+      clientLoadMap[clientId].overdue,
+      clientLoadMap[clientId].dueSoon,
+    ]);
+
+  if (clientLoadRows.length > 0) {
+    dashboardSheet
+      .getRange(clientLoadStartRow + 2, 1, clientLoadRows.length, clientLoadHeaders.length)
+      .setValues(clientLoadRows);
+  } else {
+    dashboardSheet.getRange(clientLoadStartRow + 2, 1).setValue('Brak danych o klientach.');
+  }
+
+  applyManagerConditionalFormatting_(dashboardSheet, riskStartRow + 2, riskTasks.length);
   dashboardSheet.autoResizeColumns(1, 7);
+}
+
+function readManagerFilters_(sheet) {
+  return {
+    status: normalizeManagerStatusFilter_(sheet.getRange('B5').getValue()),
+    employeeName:
+      normalizeText_(sheet.getRange('B6').getValue()) || MANAGER_FILTER.ALL_EMPLOYEES,
+    horizonDays: Math.max(
+      1,
+      toNumber_(sheet.getRange('B7').getValue(), MANAGER_FILTER.DEFAULT_HORIZON_DAYS)
+    ),
+    riskDays: Math.max(
+      0,
+      toNumber_(sheet.getRange('B8').getValue(), MANAGER_FILTER.DEFAULT_RISK_DAYS)
+    ),
+  };
+}
+
+function prepareManagerDashboardLayout_(sheet, employeeNames, previousFilters) {
+  sheet.clear();
+  sheet.setFrozenRows(3);
+
+  sheet.getRange('A1').setValue('Dashboard managera');
+  sheet
+    .getRange('A1:G1')
+    .setBackground('#1a73e8')
+    .setFontColor('#ffffff')
+    .setFontWeight('bold');
+  sheet.getRange('A1').setFontSize(14);
+  sheet.getRange('A2').setFontStyle('italic').setFontColor('#5f6368');
+  sheet.getRange('A3').setFontColor('#5f6368');
+
+  sheet.getRange('A4').setValue('Filtry dashboardu').setFontWeight('bold');
+  sheet.getRange('A5').setValue('Status');
+  sheet.getRange('A6').setValue('Pracownik');
+  sheet.getRange('A7').setValue('Horyzont terminu (dni)');
+  sheet.getRange('A8').setValue('Prog zagrozenia (dni)');
+  sheet.getRange('A4:B8').setBackground('#f8f9fa');
+
+  const statusOptions = [
+    MANAGER_FILTER.ALL,
+    MANAGER_FILTER.OPEN,
+    STATUS.NEW,
+    STATUS.IN_PROGRESS,
+    STATUS.DONE,
+  ];
+  const employeeOptions = [MANAGER_FILTER.ALL_EMPLOYEES].concat(employeeNames);
+
+  const selectedStatus = statusOptions.includes(previousFilters.status)
+    ? previousFilters.status
+    : MANAGER_FILTER.OPEN;
+  const selectedEmployee = employeeOptions.includes(previousFilters.employeeName)
+    ? previousFilters.employeeName
+    : MANAGER_FILTER.ALL_EMPLOYEES;
+
+  sheet.getRange('B5').setValue(selectedStatus);
+  sheet.getRange('B6').setValue(selectedEmployee);
+  sheet
+    .getRange('B7')
+    .setValue(
+      Math.max(1, toNumber_(previousFilters.horizonDays, MANAGER_FILTER.DEFAULT_HORIZON_DAYS))
+    );
+  sheet
+    .getRange('B8')
+    .setValue(Math.max(0, toNumber_(previousFilters.riskDays, MANAGER_FILTER.DEFAULT_RISK_DAYS)));
+
+  const statusRule = SpreadsheetApp.newDataValidation()
+    .requireValueInList(statusOptions, true)
+    .setAllowInvalid(false)
+    .build();
+  const employeeRule = SpreadsheetApp.newDataValidation()
+    .requireValueInList(employeeOptions, true)
+    .setAllowInvalid(false)
+    .build();
+  const positiveIntegerRule = SpreadsheetApp.newDataValidation()
+    .requireFormulaSatisfied('=AND(ISNUMBER(B7),B7>=1,B7=INT(B7))')
+    .setAllowInvalid(false)
+    .setHelpText('Podaj liczbe calkowita >= 1.')
+    .build();
+  const nonNegativeIntegerRule = SpreadsheetApp.newDataValidation()
+    .requireFormulaSatisfied('=AND(ISNUMBER(B8),B8>=0,B8=INT(B8))')
+    .setAllowInvalid(false)
+    .setHelpText('Podaj liczbe calkowita >= 0.')
+    .build();
+
+  sheet.getRange('B5').setDataValidation(statusRule);
+  sheet.getRange('B6').setDataValidation(employeeRule);
+  sheet.getRange('B7').setDataValidation(positiveIntegerRule);
+  sheet.getRange('B8').setDataValidation(nonNegativeIntegerRule);
+}
+
+function buildManagerEmployeeLookups_(employeeRows) {
+  const byName = {};
+  const names = [];
+
+  employeeRows.forEach((row) => {
+    const employeeId = normalizeText_(row.employee_id);
+    const employeeName = normalizeText_(row.pracownik) || employeeId;
+    if (!employeeId || !employeeName) {
+      return;
+    }
+    names.push(employeeName);
+    byName[employeeName] = employeeId;
+  });
+
+  names.sort();
+  return {
+    names,
+    byName,
+  };
+}
+
+function normalizeManagerStatusFilter_(value) {
+  const normalized = normalizeText_(value).toUpperCase();
+  const allowed = [
+    MANAGER_FILTER.ALL,
+    MANAGER_FILTER.OPEN,
+    STATUS.NEW,
+    STATUS.IN_PROGRESS,
+    STATUS.DONE,
+  ];
+  if (allowed.includes(normalized)) {
+    return normalized;
+  }
+  return MANAGER_FILTER.OPEN;
+}
+
+function matchesManagerStatusFilter_(task, statusFilter) {
+  if (statusFilter === MANAGER_FILTER.ALL) {
+    return true;
+  }
+  if (statusFilter === MANAGER_FILTER.OPEN) {
+    return task.status !== STATUS.DONE;
+  }
+  return task.status === statusFilter;
+}
+
+function applyManagerConditionalFormatting_(sheet, startRow, taskCount) {
+  if (!taskCount) {
+    return;
+  }
+
+  const daysColumn = 7;
+  const range = sheet.getRange(startRow, 1, taskCount, 7);
+  const daysRange = sheet.getRange(startRow, daysColumn, taskCount, 1);
+  const values = daysRange.getValues();
+
+  values.forEach((row, idx) => {
+    const days = toNumber_(row[0], 9999);
+    if (days < 0) {
+      range.getCell(idx + 1, 1).offset(0, 0, 1, 7).setBackground('#fde7e9');
+      return;
+    }
+    if (days <= 1) {
+      range.getCell(idx + 1, 1).offset(0, 0, 1, 7).setBackground('#fff4e5');
+    }
+  });
 }
 
 function resolveCurrentEmployee_() {
@@ -281,7 +523,7 @@ function getWorkerSummary() {
 
   const today = normalizeDate_(new Date());
   const soonDate = new Date(today.getTime());
-  soonDate.setDate(soonDate.getDate() + 7);
+  soonDate.setDate(soonDate.getDate() + MANAGER_FILTER.DEFAULT_HORIZON_DAYS);
 
   const tasks = getObjectRows_(SHEET_NAMES.TASKS)
     .filter((row) => normalizeText_(row.employee_id) === employee.employeeId)
@@ -309,7 +551,7 @@ function getWorkerSummary() {
 function getManagerSummary() {
   const today = normalizeDate_(new Date());
   const soonDate = new Date(today.getTime());
-  soonDate.setDate(soonDate.getDate() + 7);
+  soonDate.setDate(soonDate.getDate() + MANAGER_FILTER.DEFAULT_HORIZON_DAYS);
 
   const openTasks = getObjectRows_(SHEET_NAMES.TASKS).filter(
     (row) => normalizeText_(row.status) !== STATUS.DONE

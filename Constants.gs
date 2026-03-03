@@ -64,6 +64,14 @@ const STATUS = Object.freeze({
   DONE: 'WYKONANE',
 });
 
+const MANAGER_FILTER = Object.freeze({
+  ALL: 'WSZYSTKIE',
+  OPEN: 'OTWARTE',
+  ALL_EMPLOYEES: 'WSZYSCY',
+  DEFAULT_HORIZON_DAYS: 7,
+  DEFAULT_RISK_DAYS: 2,
+});
+
 const MY_TASKS_COL = Object.freeze({
   CHECKBOX: 1,
   TASK_ID: 2,

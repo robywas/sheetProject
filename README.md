@@ -26,6 +26,7 @@ Po uruchomieniu `setupWorkbook()` skrypt zaklada:
 - `setupWorkbook()`  
   Zaklada/odswieza zakladki i naglowki oraz migruje stare nazwy zakladek
   `Pacjenci` -> `Klienci` i `Pacjenci_Procedury` -> `Klienci_Procedury`.
+  Dodatkowo ustawia twarde walidacje danych i gotowa formatke dashboardu managera.
 
 - `seedSampleData()`  
   Uzupelnia arkusz przykladowymi danymi (tylko gdy zakladki sa puste poza naglowkiem).
@@ -45,9 +46,11 @@ Po uruchomieniu `setupWorkbook()` skrypt zaklada:
 
 - `refreshManagerDashboard()`  
   Buduje dashboard managera:
-  - KPI (otwarte, przeterminowane, termin <= 7 dni, wykonanie 30 dni),
+  - KPI (otwarte, przeterminowane, termin <= horyzont, wykonanie 30 dni),
   - lista zagrozonych terminow,
-  - obciazenie pracownikow.
+  - obciazenie pracownikow,
+  - podsumowanie klientow,
+  - filtry: status, pracownik, horyzont i prog zagrozenia.
 
 - `onEdit(e)`  
   Gdy pracownik zaznaczy checkbox w `Moje_zadania`:
@@ -103,7 +106,17 @@ Panele boczne:
 5. Dodaj trigger czasowy (np. codziennie 06:00) dla `generateTasks30Days()`.
 6. Ustal workflow statusow (`NOWE`, `W_TRAKCIE`, `WYKONANE`) zgodny z Twoim procesem.
 
-## 6) Rozszerzenia, ktore latwo dodac
+## 6) Twarde walidacje danych (ustawiane automatycznie)
+
+Po `setupWorkbook()` skrypt ustawia:
+
+- `Procedury!dzien_miesiaca` - dropdown `1..31` + `OSTATNI`,
+- `Procedury!dni_ostrzezenia` - liczba calkowita >= 0,
+- `Przypisania!kolejnosc` - liczba calkowita >= 1,
+- walidacje `client_id`, `procedure_id`, `employee_id` na podstawie slownikow,
+- checkboxy dla kolumn aktywnosci.
+
+## 7) Rozszerzenia, ktore latwo dodac
 
 - automatyczne powiadomienia email/slack o zadaniach zagrozonych,
 - SLA i eskalacje,

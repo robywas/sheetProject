@@ -33,6 +33,12 @@ function setupWorkbook() {
 
   applyFormatting_();
   applyDataHints_();
+  applyDataValidation_();
+  try {
+    refreshManagerDashboard();
+  } catch (error) {
+    // Dashboard moze byc odswiezony pozniej z menu.
+  }
   SpreadsheetApp.getActiveSpreadsheet().toast(
     'Struktura arkusza jest gotowa.',
     'Procedury',
@@ -134,6 +140,79 @@ function applyDataHints_() {
   proceduresSheet.getRange('D1').setNote(
     'Podaj dzien miesiaca: 1..31 lub "' + SCHEDULE_LAST_DAY_TOKEN + '".'
   );
+}
+
+function applyDataValidation_() {
+  const proceduresSheet = getSheetOrThrow_(SHEET_NAMES.PROCEDURES);
+  const clientsSheet = getSheetOrThrow_(SHEET_NAMES.CLIENTS);
+  const employeesSheet = getSheetOrThrow_(SHEET_NAMES.EMPLOYEES);
+  const clientProceduresSheet = getSheetOrThrow_(SHEET_NAMES.CLIENT_PROCEDURES);
+  const assignmentsSheet = getSheetOrThrow_(SHEET_NAMES.ASSIGNMENTS);
+
+  const procedureRows = proceduresSheet.getMaxRows() - 1;
+  const clientRows = clientsSheet.getMaxRows() - 1;
+  const employeeRows = employeesSheet.getMaxRows() - 1;
+  const clientProcedureRows = clientProceduresSheet.getMaxRows() - 1;
+  const assignmentRows = assignmentsSheet.getMaxRows() - 1;
+
+  const monthDayOptions = [];
+  for (let day = 1; day <= 31; day += 1) {
+    monthDayOptions.push(String(day));
+  }
+  monthDayOptions.push(SCHEDULE_LAST_DAY_TOKEN);
+
+  const monthDayRule = SpreadsheetApp.newDataValidation()
+    .requireValueInList(monthDayOptions, true)
+    .setAllowInvalid(false)
+    .setHelpText('Dozwolone: 1..31 lub OSTATNI.')
+    .build();
+  proceduresSheet.getRange(2, 4, procedureRows, 1).setDataValidation(monthDayRule);
+
+  const nonNegativeIntegerRule = SpreadsheetApp.newDataValidation()
+    .requireFormulaSatisfied('=OR(E2="",AND(ISNUMBER(E2),E2>=0,E2=INT(E2)))')
+    .setAllowInvalid(false)
+    .setHelpText('Podaj liczbe calkowita >= 0.')
+    .build();
+  proceduresSheet.getRange(2, 5, procedureRows, 1).setDataValidation(nonNegativeIntegerRule);
+
+  const positiveIntegerRule = SpreadsheetApp.newDataValidation()
+    .requireFormulaSatisfied('=OR(F2="",AND(ISNUMBER(F2),F2>=1,F2=INT(F2)))')
+    .setAllowInvalid(false)
+    .setHelpText('Podaj liczbe calkowita >= 1.')
+    .build();
+  assignmentsSheet.getRange(2, 6, assignmentRows, 1).setDataValidation(positiveIntegerRule);
+
+  const clientIdRange = clientsSheet.getRange(2, 1, clientRows, 1);
+  const procedureIdRange = proceduresSheet.getRange(2, 1, procedureRows, 1);
+  const employeeIdRange = employeesSheet.getRange(2, 1, employeeRows, 1);
+
+  const clientIdRule = SpreadsheetApp.newDataValidation()
+    .requireValueInRange(clientIdRange, true)
+    .setAllowInvalid(false)
+    .setHelpText('Wybierz client_id z zakladki Klienci.')
+    .build();
+  const procedureIdRule = SpreadsheetApp.newDataValidation()
+    .requireValueInRange(procedureIdRange, true)
+    .setAllowInvalid(false)
+    .setHelpText('Wybierz procedure_id z zakladki Procedury.')
+    .build();
+  const employeeIdRule = SpreadsheetApp.newDataValidation()
+    .requireValueInRange(employeeIdRange, true)
+    .setAllowInvalid(false)
+    .setHelpText('Wybierz employee_id z zakladki Pracownicy.')
+    .build();
+
+  clientProceduresSheet.getRange(2, 1, clientProcedureRows, 1).setDataValidation(clientIdRule);
+  clientProceduresSheet
+    .getRange(2, 2, clientProcedureRows, 1)
+    .setDataValidation(procedureIdRule);
+  assignmentsSheet.getRange(2, 1, assignmentRows, 1).setDataValidation(clientIdRule);
+  assignmentsSheet.getRange(2, 2, assignmentRows, 1).setDataValidation(employeeIdRule);
+
+  proceduresSheet.getRange(2, 6, procedureRows, 1).insertCheckboxes();
+  clientsSheet.getRange(2, 3, clientRows, 1).insertCheckboxes();
+  clientProceduresSheet.getRange(2, 4, clientProcedureRows, 1).insertCheckboxes();
+  assignmentsSheet.getRange(2, 5, assignmentRows, 1).insertCheckboxes();
 }
 
 function migrateLegacySheetNames_(spreadsheet) {
