@@ -22,10 +22,10 @@ function generateRecurringTasks(daysAhead) {
   const procedures = getObjectRows_(SHEET_NAMES.PROCEDURES).filter((row) =>
     toBoolean_(row.aktywna, true)
   );
-  const patients = getObjectRows_(SHEET_NAMES.PATIENTS).filter((row) =>
+  const clients = getObjectRows_(SHEET_NAMES.CLIENTS).filter((row) =>
     toBoolean_(row.aktywny, true)
   );
-  const patientProcedures = getObjectRows_(SHEET_NAMES.PATIENT_PROCEDURES).filter((row) =>
+  const clientProcedures = getObjectRows_(SHEET_NAMES.CLIENT_PROCEDURES).filter((row) =>
     toBoolean_(row.aktywna, true)
   );
   const assignments = getObjectRows_(SHEET_NAMES.ASSIGNMENTS).filter((row) =>
@@ -33,8 +33,8 @@ function generateRecurringTasks(daysAhead) {
   );
   const existingTasks = getObjectRows_(SHEET_NAMES.TASKS);
 
-  const activePatientIds = new Set(
-    patients.map((row) => normalizeText_(row.patient_id)).filter(Boolean)
+  const activeClientIds = new Set(
+    clients.map((row) => normalizeText_(row.client_id)).filter(Boolean)
   );
 
   const proceduresById = {};
@@ -55,35 +55,35 @@ function generateRecurringTasks(daysAhead) {
     };
   });
 
-  const assignmentsByPatient = buildAssignmentsByPatient_(assignments);
+  const assignmentsByClient = buildAssignmentsByClient_(assignments);
   const existingKeys = new Set();
   const lastDueByPair = {};
 
   existingTasks.forEach((row) => {
-    const patientId = normalizeText_(row.patient_id);
+    const clientId = normalizeText_(row.client_id);
     const procedureId = normalizeText_(row.procedure_id);
     const dueDate = toDate_(row.due_date);
-    if (!patientId || !procedureId || !dueDate) {
+    if (!clientId || !procedureId || !dueDate) {
       return;
     }
 
-    const pairKey = patientId + '|' + procedureId;
+    const pairKey = clientId + '|' + procedureId;
     if (!lastDueByPair[pairKey] || dueDate > lastDueByPair[pairKey]) {
       lastDueByPair[pairKey] = dueDate;
     }
 
-    const rowKey = normalizeText_(row.task_key) || buildTaskKey_(patientId, procedureId, dueDate);
+    const rowKey = normalizeText_(row.task_key) || buildTaskKey_(clientId, procedureId, dueDate);
     existingKeys.add(rowKey);
   });
 
   const newRows = [];
-  patientProcedures.forEach((relation) => {
-    const patientId = normalizeText_(relation.patient_id);
+  clientProcedures.forEach((relation) => {
+    const clientId = normalizeText_(relation.client_id);
     const procedureId = normalizeText_(relation.procedure_id);
-    if (!patientId || !procedureId) {
+    if (!clientId || !procedureId) {
       return;
     }
-    if (!activePatientIds.has(patientId)) {
+    if (!activeClientIds.has(clientId)) {
       return;
     }
 
@@ -98,7 +98,7 @@ function generateRecurringTasks(daysAhead) {
     );
     const relationStartDate = toDate_(relation.data_start) || today;
 
-    const pairKey = patientId + '|' + procedureId;
+    const pairKey = clientId + '|' + procedureId;
     let nextDueDate = alignDateToWindow_(relationStartDate, today, frequencyDays);
 
     if (lastDueByPair[pairKey] && lastDueByPair[pairKey] >= nextDueDate) {
@@ -112,19 +112,19 @@ function generateRecurringTasks(daysAhead) {
       dueDate.setDate(dueDate.getDate() + frequencyDays)
     ) {
       const normalizedDueDate = normalizeDate_(dueDate);
-      const taskKey = buildTaskKey_(patientId, procedureId, normalizedDueDate);
+      const taskKey = buildTaskKey_(clientId, procedureId, normalizedDueDate);
       if (existingKeys.has(taskKey)) {
         continue;
       }
 
       const employeeId = findAssignedEmployeeForDate_(
-        assignmentsByPatient[patientId] || [],
+        assignmentsByClient[clientId] || [],
         normalizedDueDate
       );
 
       newRows.push([
         Utilities.getUuid(),
-        patientId,
+        clientId,
         procedureId,
         employeeId,
         normalizedDueDate,
@@ -192,28 +192,28 @@ function updateTaskNote_(taskId, note) {
   sheet.getRange(match.getRow(), 9).setValue(note);
 }
 
-function buildAssignmentsByPatient_(assignmentRows) {
+function buildAssignmentsByClient_(assignmentRows) {
   const map = {};
   assignmentRows.forEach((row) => {
-    const patientId = normalizeText_(row.patient_id);
+    const clientId = normalizeText_(row.client_id);
     const employeeId = normalizeText_(row.employee_id);
-    if (!patientId || !employeeId) {
+    if (!clientId || !employeeId) {
       return;
     }
 
-    if (!map[patientId]) {
-      map[patientId] = [];
+    if (!map[clientId]) {
+      map[clientId] = [];
     }
 
-    map[patientId].push({
+    map[clientId].push({
       employeeId: employeeId,
       fromDate: toDate_(row.data_od),
       toDate: toDate_(row.data_do),
     });
   });
 
-  Object.keys(map).forEach((patientId) => {
-    map[patientId].sort((left, right) => {
+  Object.keys(map).forEach((clientId) => {
+    map[clientId].sort((left, right) => {
       const leftTime = left.fromDate ? left.fromDate.getTime() : 0;
       const rightTime = right.fromDate ? right.fromDate.getTime() : 0;
       return rightTime - leftTime;
@@ -223,14 +223,14 @@ function buildAssignmentsByPatient_(assignmentRows) {
   return map;
 }
 
-function findAssignedEmployeeForDate_(patientAssignments, dueDate) {
-  if (!patientAssignments || patientAssignments.length === 0) {
+function findAssignedEmployeeForDate_(clientAssignments, dueDate) {
+  if (!clientAssignments || clientAssignments.length === 0) {
     return '';
   }
 
   const targetDate = normalizeDate_(dueDate);
 
-  const exactMatch = patientAssignments.find((assignment) => {
+  const exactMatch = clientAssignments.find((assignment) => {
     const startsBeforeOrOn = !assignment.fromDate || assignment.fromDate <= targetDate;
     const endsAfterOrOn = !assignment.toDate || assignment.toDate >= targetDate;
     return startsBeforeOrOn && endsAfterOrOn;
@@ -240,7 +240,7 @@ function findAssignedEmployeeForDate_(patientAssignments, dueDate) {
     return exactMatch.employeeId;
   }
 
-  const fallback = patientAssignments.find(
+  const fallback = clientAssignments.find(
     (assignment) => !assignment.fromDate && !assignment.toDate
   );
   return fallback ? fallback.employeeId : '';

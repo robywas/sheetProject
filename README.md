@@ -3,8 +3,8 @@
 Gotowy szablon Google Apps Script do obslugi regularnych procedur medyczno-opiekunczych:
 
 - ewidencja procedur cyklicznych,
-- powiazanie procedur z pacjentami,
-- przypisania pacjentow do pracownikow w okresach czasu,
+- powiazanie procedur z klientami,
+- przypisania klientow do pracownikow w okresach czasu,
 - widok pracownika ("Moje_zadania"),
 - widok managera ("Dashboard_managera" + panel boczny).
 
@@ -13,9 +13,9 @@ Gotowy szablon Google Apps Script do obslugi regularnych procedur medyczno-opiek
 Po uruchomieniu `setupWorkbook()` skrypt zaklada:
 
 1. `Procedury`
-2. `Pacjenci`
+2. `Klienci`
 3. `Pracownicy`
-4. `Pacjenci_Procedury`
+4. `Klienci_Procedury`
 5. `Przypisania`
 6. `Zadania`
 7. `Moje_zadania`
@@ -31,10 +31,10 @@ Po uruchomieniu `setupWorkbook()` skrypt zaklada:
 
 - `generateTasks30Days()`  
   Generuje zadania cykliczne na 30 dni do przodu:
-  - uwzglednia aktywne relacje pacjent-procedura,
+  - uwzglednia aktywne relacje klient-procedura,
   - uwzglednia czestotliwosc procedury (lub override),
   - przypisuje pracownika wg zakladki `Przypisania`,
-  - nie duplikuje zadan (klucz: `patient_id|procedure_id|due_date`).
+  - nie duplikuje zadan (klucz: `client_id|procedure_id|due_date`).
 
 - `refreshMyTasksView()`  
   Odswieza widok pracownika:
@@ -92,7 +92,7 @@ Panele boczne:
 ## 5) Ustawienia produkcyjne (zalecane)
 
 1. W `Pracownicy` uzupelnij poprawne emaile kont Google.
-2. W `Przypisania` utrzymuj zakresy dat przypisania pacjenta do pracownika.
+2. W `Przypisania` utrzymuj zakresy dat przypisania klienta do pracownika.
 3. Dodaj trigger czasowy (np. codziennie 06:00) dla `generateTasks30Days()`.
 4. Ustal workflow statusow (`NOWE`, `W_TRAKCIE`, `WYKONANE`) zgodny z Twoim procesem.
 

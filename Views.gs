@@ -13,7 +13,7 @@ function refreshMyTasksView() {
     .map((row) => {
       return {
         taskId: normalizeText_(row.task_id),
-        patientId: normalizeText_(row.patient_id),
+        clientId: normalizeText_(row.client_id),
         procedureId: normalizeText_(row.procedure_id),
         dueDate: toDate_(row.due_date),
         status: normalizeText_(row.status) || STATUS.NEW,
@@ -23,10 +23,10 @@ function refreshMyTasksView() {
     .filter((task) => task.taskId && task.dueDate)
     .sort((left, right) => left.dueDate - right.dueDate);
 
-  const patientNames = getLookupMap_(
-    getObjectRows_(SHEET_NAMES.PATIENTS),
-    'patient_id',
-    'pacjent'
+  const clientNames = getLookupMap_(
+    getObjectRows_(SHEET_NAMES.CLIENTS),
+    'client_id',
+    'klient'
   );
   const procedureNames = getLookupMap_(
     getObjectRows_(SHEET_NAMES.PROCEDURES),
@@ -47,7 +47,7 @@ function refreshMyTasksView() {
     false,
     task.taskId,
     task.dueDate,
-    patientNames[task.patientId] || task.patientId,
+    clientNames[task.clientId] || task.clientId,
     procedureNames[task.procedureId] || task.procedureId,
     task.status,
     task.note,
@@ -81,7 +81,7 @@ function refreshManagerDashboard() {
     const completedAt = toDate_(row.completed_at);
     return {
       taskId: normalizeText_(row.task_id),
-      patientId: normalizeText_(row.patient_id),
+      clientId: normalizeText_(row.client_id),
       procedureId: normalizeText_(row.procedure_id),
       employeeId: normalizeText_(row.employee_id),
       dueDate,
@@ -132,10 +132,10 @@ function refreshManagerDashboard() {
   dashboardSheet.getRange(4, 1, kpiTable.length, 2).setValues(kpiTable);
   dashboardSheet.getRange(4, 1, 1, 2).setFontWeight('bold').setBackground('#f1f3f4');
 
-  const patientNames = getLookupMap_(
-    getObjectRows_(SHEET_NAMES.PATIENTS),
-    'patient_id',
-    'pacjent'
+  const clientNames = getLookupMap_(
+    getObjectRows_(SHEET_NAMES.CLIENTS),
+    'client_id',
+    'klient'
   );
   const procedureNames = getLookupMap_(
     getObjectRows_(SHEET_NAMES.PROCEDURES),
@@ -156,7 +156,7 @@ function refreshManagerDashboard() {
       return [
         task.taskId,
         task.dueDate,
-        patientNames[task.patientId] || task.patientId,
+        clientNames[task.clientId] || task.clientId,
         procedureNames[task.procedureId] || task.procedureId,
         employeeNames[task.employeeId] || task.employeeId || '(nieprzypisane)',
         task.status,
@@ -168,7 +168,7 @@ function refreshManagerDashboard() {
   const riskHeaders = [
     'task_id',
     'termin',
-    'pacjent',
+    'klient',
     'procedura',
     'pracownik',
     'status',

@@ -6,7 +6,7 @@ function setupWorkbook() {
     SHEET_NAMES.PROCEDURES,
     HEADERS.PROCEDURES
   );
-  ensureSheetWithHeader_(spreadsheet, SHEET_NAMES.PATIENTS, HEADERS.PATIENTS);
+  ensureSheetWithHeader_(spreadsheet, SHEET_NAMES.CLIENTS, HEADERS.CLIENTS);
   ensureSheetWithHeader_(
     spreadsheet,
     SHEET_NAMES.EMPLOYEES,
@@ -14,8 +14,8 @@ function setupWorkbook() {
   );
   ensureSheetWithHeader_(
     spreadsheet,
-    SHEET_NAMES.PATIENT_PROCEDURES,
-    HEADERS.PATIENT_PROCEDURES
+    SHEET_NAMES.CLIENT_PROCEDURES,
+    HEADERS.CLIENT_PROCEDURES
   );
   ensureSheetWithHeader_(
     spreadsheet,
@@ -42,9 +42,9 @@ function seedSampleData() {
   setupWorkbook();
 
   const proceduresSheet = getSheetOrThrow_(SHEET_NAMES.PROCEDURES);
-  const patientsSheet = getSheetOrThrow_(SHEET_NAMES.PATIENTS);
+  const clientsSheet = getSheetOrThrow_(SHEET_NAMES.CLIENTS);
   const employeesSheet = getSheetOrThrow_(SHEET_NAMES.EMPLOYEES);
-  const patientProceduresSheet = getSheetOrThrow_(SHEET_NAMES.PATIENT_PROCEDURES);
+  const clientProceduresSheet = getSheetOrThrow_(SHEET_NAMES.CLIENT_PROCEDURES);
   const assignmentsSheet = getSheetOrThrow_(SHEET_NAMES.ASSIGNMENTS);
 
   appendRowsIfOnlyHeader_(proceduresSheet, [
@@ -53,11 +53,11 @@ function seedSampleData() {
     ['P003', 'Ocena rany', 'Kontrola i dokumentacja', 14, 3, true],
   ]);
 
-  appendRowsIfOnlyHeader_(patientsSheet, [
-    ['PT001', 'Jan Kowalski', true],
-    ['PT002', 'Anna Nowak', true],
-    ['PT003', 'Piotr Wisniewski', true],
-    ['PT004', 'Maria Zielinska', true],
+  appendRowsIfOnlyHeader_(clientsSheet, [
+    ['CL001', 'Jan Kowalski', true],
+    ['CL002', 'Anna Nowak', true],
+    ['CL003', 'Piotr Wisniewski', true],
+    ['CL004', 'Maria Zielinska', true],
   ]);
 
   appendRowsIfOnlyHeader_(employeesSheet, [
@@ -70,19 +70,19 @@ function seedSampleData() {
   const startDate = new Date(today.getTime());
   startDate.setDate(startDate.getDate() - 7);
 
-  appendRowsIfOnlyHeader_(patientProceduresSheet, [
-    ['PT001', 'P001', startDate, '', true],
-    ['PT001', 'P002', startDate, '', true],
-    ['PT002', 'P003', startDate, '', true],
-    ['PT003', 'P001', startDate, 10, true],
-    ['PT004', 'P002', startDate, '', true],
+  appendRowsIfOnlyHeader_(clientProceduresSheet, [
+    ['CL001', 'P001', startDate, '', true],
+    ['CL001', 'P002', startDate, '', true],
+    ['CL002', 'P003', startDate, '', true],
+    ['CL003', 'P001', startDate, 10, true],
+    ['CL004', 'P002', startDate, '', true],
   ]);
 
   appendRowsIfOnlyHeader_(assignmentsSheet, [
-    ['PT001', 'E001', startDate, '', true],
-    ['PT002', 'E001', startDate, '', true],
-    ['PT003', 'E002', startDate, '', true],
-    ['PT004', 'E002', startDate, '', true],
+    ['CL001', 'E001', startDate, '', true],
+    ['CL002', 'E001', startDate, '', true],
+    ['CL003', 'E002', startDate, '', true],
+    ['CL004', 'E002', startDate, '', true],
   ]);
 
   SpreadsheetApp.getActiveSpreadsheet().toast(
@@ -113,8 +113,8 @@ function applyFormatting_() {
   taskSheet.getRange('E:E').setNumberFormat('yyyy-mm-dd');
   taskSheet.getRange('G:H').setNumberFormat('yyyy-mm-dd hh:mm');
 
-  const patientProceduresSheet = getSheetOrThrow_(SHEET_NAMES.PATIENT_PROCEDURES);
-  patientProceduresSheet.getRange('C:C').setNumberFormat('yyyy-mm-dd');
+  const clientProceduresSheet = getSheetOrThrow_(SHEET_NAMES.CLIENT_PROCEDURES);
+  clientProceduresSheet.getRange('C:C').setNumberFormat('yyyy-mm-dd');
 
   const assignmentsSheet = getSheetOrThrow_(SHEET_NAMES.ASSIGNMENTS);
   assignmentsSheet.getRange('C:D').setNumberFormat('yyyy-mm-dd');
