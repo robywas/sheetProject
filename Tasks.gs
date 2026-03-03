@@ -403,6 +403,10 @@ function onEdit(e) {
   }
 
   const sheet = e.range.getSheet();
+  if (enforceMasterDataIntegerRulesOnEdit_(sheet, e.range)) {
+    return;
+  }
+
   if (sheet.getName() !== SHEET_NAMES.MY_TASKS || e.range.getRow() === 1) {
     return;
   }
@@ -434,4 +438,44 @@ function onEdit(e) {
     }
     updateTaskNote_(taskId, e.range.getValue());
   }
+}
+
+function enforceMasterDataIntegerRulesOnEdit_(sheet, range) {
+  if (range.getRow() === 1) {
+    return false;
+  }
+
+  const sheetName = sheet.getName();
+  const col = range.getColumn();
+  const value = range.getValue();
+
+  if (sheetName === SHEET_NAMES.PROCEDURES && col === 5) {
+    return validateIntegerCell_(range, value, 0, 'W kolumnie dni_ostrzezenia wpisz liczbe calkowita >= 0.');
+  }
+
+  if (sheetName === SHEET_NAMES.ASSIGNMENTS && col === 6) {
+    return validateIntegerCell_(range, value, 1, 'W kolumnie kolejnosc wpisz liczbe calkowita >= 1.');
+  }
+
+  return false;
+}
+
+function validateIntegerCell_(range, value, minValue, errorMessage) {
+  if (value === '' || value === null || typeof value === 'undefined') {
+    return false;
+  }
+
+  const numericValue = Number(value);
+  const isValidInteger =
+    Number.isFinite(numericValue) &&
+    numericValue >= minValue &&
+    numericValue === Math.floor(numericValue);
+
+  if (isValidInteger) {
+    return false;
+  }
+
+  range.clearContent();
+  SpreadsheetApp.getActiveSpreadsheet().toast(errorMessage, 'Walidacja', 5);
+  return true;
 }

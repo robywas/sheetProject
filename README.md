@@ -114,7 +114,9 @@ Po `setupWorkbook()` skrypt ustawia:
 - `Procedury!dni_ostrzezenia` - liczba calkowita >= 0,
 - `Przypisania!kolejnosc` - liczba calkowita >= 1,
 - walidacje `client_id`, `procedure_id`, `employee_id` na podstawie slownikow,
-- checkboxy dla kolumn aktywnosci.
+- checkboxy dla kolumn aktywnosci,
+- dodatkowa kontrola przy edycji (onEdit), ktora czyści nieprawidlowe liczby niecalkowite
+  w `dni_ostrzezenia` i `kolejnosc`.
 
 ## 7) Rozszerzenia, ktore latwo dodac
 
