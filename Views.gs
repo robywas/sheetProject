@@ -8,13 +8,17 @@ function refreshMyTasksView() {
 
   const taskRows = getObjectRows_(SHEET_NAMES.TASKS);
   const openTasks = taskRows
-    .filter((row) => normalizeText_(row.pracownik) === employee.employeeName)
+    .filter(
+      (row) =>
+        normalizeLookupKey_(row.pracownik || row.employee_id) ===
+        normalizeLookupKey_(employee.employeeName)
+    )
     .filter((row) => normalizeText_(row.status) !== STATUS.DONE)
     .map((row) => {
       return {
         taskId: normalizeText_(row.task_id),
-        clientName: normalizeText_(row.klient),
-        procedureName: normalizeText_(row.procedura),
+        clientName: normalizeText_(row.klient || row.client_id),
+        procedureName: normalizeText_(row.procedura || row.procedure_id),
         dueDate: toDate_(row.due_date),
         status: normalizeText_(row.status) || STATUS.NEW,
         note: row.notes || '',
@@ -86,9 +90,9 @@ function refreshManagerDashboard() {
     const completedAt = toDate_(row.completed_at);
     return {
       taskId: normalizeText_(row.task_id),
-      clientName: normalizeText_(row.klient),
-      procedureName: normalizeText_(row.procedura),
-      employeeName: normalizeText_(row.pracownik),
+      clientName: normalizeText_(row.klient || row.client_id),
+      procedureName: normalizeText_(row.procedura || row.procedure_id),
+      employeeName: normalizeText_(row.pracownik || row.employee_id),
       dueDate,
       status: normalizeText_(row.status) || STATUS.NEW,
       completedAt,
@@ -97,7 +101,10 @@ function refreshManagerDashboard() {
 
   const tasksInScope = tasks
     .filter((task) =>
-      selectedEmployeeName ? task.employeeName === selectedEmployeeName : true
+      selectedEmployeeName
+        ? normalizeLookupKey_(task.employeeName) ===
+          normalizeLookupKey_(selectedEmployeeName)
+        : true
     )
     .filter((task) => matchesManagerStatusFilter_(task, filters.status));
 
@@ -396,7 +403,7 @@ function buildManagerEmployeeLookups_(employeeRows) {
   const names = [];
 
   employeeRows.forEach((row) => {
-    const employeeName = normalizeText_(row.pracownik);
+    const employeeName = normalizeText_(row.pracownik || row.employee_id);
     if (!employeeName) {
       return;
     }
@@ -476,7 +483,7 @@ function resolveCurrentEmployee_() {
   }
 
   return {
-    employeeName: normalizeText_(matched.pracownik),
+    employeeName: normalizeText_(matched.pracownik || matched.employee_id),
     email,
     role: normalizeText_(matched.rola),
   };
@@ -501,7 +508,11 @@ function getWorkerSummary() {
   soonDate.setDate(soonDate.getDate() + MANAGER_FILTER.DEFAULT_HORIZON_DAYS);
 
   const tasks = getObjectRows_(SHEET_NAMES.TASKS)
-    .filter((row) => normalizeText_(row.pracownik) === employee.employeeName)
+    .filter(
+      (row) =>
+        normalizeLookupKey_(row.pracownik || row.employee_id) ===
+        normalizeLookupKey_(employee.employeeName)
+    )
     .filter((row) => normalizeText_(row.status) !== STATUS.DONE)
     .map((row) => ({
       dueDate: toDate_(row.due_date),

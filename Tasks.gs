@@ -1,5 +1,7 @@
 function generateTasks30Days() {
-  const createdCount = generateRecurringTasks(DEFAULT_GENERATION_DAYS);
+  const generationResult = generateRecurringTasks(DEFAULT_GENERATION_DAYS);
+  const createdCount = generationResult.createdCount || 0;
+  const reassignedCount = generationResult.reassignedCount || 0;
   refreshManagerDashboard();
   try {
     refreshMyTasksView();
@@ -8,7 +10,11 @@ function generateTasks30Days() {
   }
 
   SpreadsheetApp.getActiveSpreadsheet().toast(
-    'Utworzono ' + createdCount + ' nowych zadan.',
+    'Utworzono ' +
+      createdCount +
+      ' nowych zadan, uzupelniono przypisanie w ' +
+      reassignedCount +
+      ' zadaniach.',
     'Procedury',
     5
   );
@@ -23,6 +29,9 @@ function generateRecurringTasks(daysAhead) {
   const clients = getObjectRows_(SHEET_NAMES.CLIENTS).filter((row) =>
     toBoolean_(row.aktywny, true)
   );
+  const employees = getObjectRows_(SHEET_NAMES.EMPLOYEES).filter((row) =>
+    toBoolean_(row.aktywny, true)
+  );
   const clientProcedures = getObjectRows_(SHEET_NAMES.CLIENT_PROCEDURES).filter((row) =>
     toBoolean_(row.aktywna, true)
   );
@@ -31,21 +40,33 @@ function generateRecurringTasks(daysAhead) {
   );
   const existingTasks = getObjectRows_(SHEET_NAMES.TASKS);
 
-  const activeClientNames = new Set(
-    clients.map((row) => normalizeText_(row.klient)).filter(Boolean)
-  );
+  const activeClientsByKey = buildNameMapByKey_(clients, ['klient', 'client_id']);
+  const employeesByKey = buildNameMapByKey_(employees, ['pracownik', 'employee_id']);
 
   const proceduresByName = buildProcedureConfigs_(procedures);
 
-  const assignmentsByClient = buildAssignmentsByClient_(assignments);
+  const assignmentsByClient = buildAssignmentsByClient_(
+    assignments,
+    activeClientsByKey,
+    employeesByKey
+  );
   const existingKeys = new Set();
   const employeeByTaskKey = {};
+  const rowByTaskKey = {};
   const lastTaskByPair = {};
 
-  existingTasks.forEach((row) => {
-    const clientName = normalizeText_(row.klient);
-    const procedureName = normalizeText_(row.procedura);
-    const employeeName = normalizeText_(row.pracownik);
+  existingTasks.forEach((row, idx) => {
+    const clientRaw = normalizeText_(row.klient || row.client_id);
+    const clientLookupKey = normalizeLookupKey_(clientRaw);
+    const clientName = activeClientsByKey[clientLookupKey] || clientRaw;
+
+    const procedureRaw = normalizeText_(row.procedura || row.procedure_id);
+    const procedureLookupKey = normalizeLookupKey_(procedureRaw);
+    const procedureConfig = proceduresByName[procedureLookupKey];
+    const procedureName = procedureConfig ? procedureConfig.procedureName : procedureRaw;
+
+    const employeeRaw = normalizeText_(row.pracownik || row.employee_id);
+    const employeeName = employeesByKey[normalizeLookupKey_(employeeRaw)] || employeeRaw;
     const dueDate = toDate_(row.due_date);
     if (!clientName || !procedureName || !dueDate) {
       return;
@@ -56,8 +77,9 @@ function generateRecurringTasks(daysAhead) {
       buildTaskKey_(clientName, procedureName, dueDate);
     existingKeys.add(taskKey);
     employeeByTaskKey[taskKey] = employeeName;
+    rowByTaskKey[taskKey] = idx + 2;
 
-    const pairKey = clientName + '|' + procedureName;
+    const pairKey = normalizeLookupKey_(clientName) + '|' + normalizeLookupKey_(procedureName);
     const current = lastTaskByPair[pairKey];
     if (!current || dueDate > current.dueDate) {
       lastTaskByPair[pairKey] = {
@@ -68,18 +90,18 @@ function generateRecurringTasks(daysAhead) {
   });
 
   const newRows = [];
+  const reassignmentUpdates = [];
   clientProcedures.forEach((relation) => {
-    const clientName = normalizeText_(relation.klient);
-    const procedureName = normalizeText_(relation.procedura);
-    if (!clientName || !procedureName) {
-      return;
-    }
-    if (!activeClientNames.has(clientName)) {
-      return;
-    }
+    const clientRaw = normalizeText_(relation.klient || relation.client_id);
+    const clientLookupKey = normalizeLookupKey_(clientRaw);
+    const clientName = activeClientsByKey[clientLookupKey];
 
-    const procedure = proceduresByName[procedureName];
-    if (!procedure) {
+    const procedureRaw = normalizeText_(relation.procedura || relation.procedure_id);
+    const procedureLookupKey = normalizeLookupKey_(procedureRaw);
+    const procedure = proceduresByName[procedureLookupKey];
+    const procedureName = procedure ? procedure.procedureName : '';
+
+    if (!clientName || !procedureName) {
       return;
     }
 
@@ -89,7 +111,7 @@ function generateRecurringTasks(daysAhead) {
       return;
     }
 
-    const pairKey = clientName + '|' + procedureName;
+    const pairKey = clientLookupKey + '|' + procedureLookupKey;
     let previousEmployeeName = lastTaskByPair[pairKey]
       ? normalizeText_(lastTaskByPair[pairKey].employeeName)
       : '';
@@ -110,12 +132,35 @@ function generateRecurringTasks(daysAhead) {
 
       const taskKey = buildTaskKey_(clientName, procedureName, normalizedDueDate);
       if (existingKeys.has(taskKey)) {
-        previousEmployeeName = employeeByTaskKey[taskKey] || previousEmployeeName;
+        const existingEmployeeName = employeeByTaskKey[taskKey] || '';
+        if (existingEmployeeName) {
+          previousEmployeeName = existingEmployeeName;
+          return;
+        }
+
+        const reassignedEmployeeName = pickNextEmployeeForDate_(
+          assignmentsByClient[clientLookupKey] || [],
+          normalizedDueDate,
+          previousEmployeeName
+        );
+        if (!reassignedEmployeeName) {
+          return;
+        }
+
+        const rowNumber = rowByTaskKey[taskKey];
+        if (rowNumber) {
+          reassignmentUpdates.push({
+            rowNumber,
+            employeeName: reassignedEmployeeName,
+          });
+          employeeByTaskKey[taskKey] = reassignedEmployeeName;
+          previousEmployeeName = reassignedEmployeeName;
+        }
         return;
       }
 
       const employeeName = pickNextEmployeeForDate_(
-        assignmentsByClient[clientName] || [],
+        assignmentsByClient[clientLookupKey] || [],
         normalizedDueDate,
         previousEmployeeName
       );
@@ -146,7 +191,17 @@ function generateRecurringTasks(daysAhead) {
       .setValues(newRows);
   }
 
-  return newRows.length;
+  if (reassignmentUpdates.length > 0) {
+    const taskSheet = getSheetOrThrow_(SHEET_NAMES.TASKS);
+    reassignmentUpdates.forEach((update) => {
+      taskSheet.getRange(update.rowNumber, 4).setValue(update.employeeName);
+    });
+  }
+
+  return {
+    createdCount: newRows.length,
+    reassignedCount: reassignmentUpdates.length,
+  };
 }
 
 function markTaskAsDone_(taskId) {
@@ -205,20 +260,25 @@ function updateTaskNote_(taskId, note) {
   sheet.getRange(match.getRow(), 9).setValue(note);
 }
 
-function buildAssignmentsByClient_(assignmentRows) {
+function buildAssignmentsByClient_(assignmentRows, clientsByKey, employeesByKey) {
   const map = {};
   assignmentRows.forEach((row) => {
-    const clientName = normalizeText_(row.klient);
-    const employeeName = normalizeText_(row.pracownik);
+    const clientRaw = normalizeText_(row.klient || row.client_id);
+    const employeeRaw = normalizeText_(row.pracownik || row.employee_id);
+    const clientLookupKey = normalizeLookupKey_(clientRaw);
+    const employeeLookupKey = normalizeLookupKey_(employeeRaw);
+    const clientName = (clientsByKey && clientsByKey[clientLookupKey]) || clientRaw;
+    const employeeName =
+      (employeesByKey && employeesByKey[employeeLookupKey]) || employeeRaw;
     if (!clientName || !employeeName) {
       return;
     }
 
-    if (!map[clientName]) {
-      map[clientName] = [];
+    if (!map[clientLookupKey]) {
+      map[clientLookupKey] = [];
     }
 
-    map[clientName].push({
+    map[clientLookupKey].push({
       employeeName: employeeName,
       fromDate: toDate_(row.data_od),
       toDate: toDate_(row.data_do),
@@ -226,12 +286,14 @@ function buildAssignmentsByClient_(assignmentRows) {
     });
   });
 
-  Object.keys(map).forEach((clientName) => {
-    map[clientName].sort((left, right) => {
+  Object.keys(map).forEach((clientLookupKey) => {
+    map[clientLookupKey].sort((left, right) => {
       if (left.order !== right.order) {
         return left.order - right.order;
       }
-      return left.employeeName.localeCompare(right.employeeName);
+      return normalizeLookupKey_(left.employeeName).localeCompare(
+        normalizeLookupKey_(right.employeeName)
+      );
     });
   });
 
@@ -303,7 +365,7 @@ function buildProcedureConfigs_(procedureRows) {
       return;
     }
 
-    const procedureName = normalizeText_(row.procedura);
+    const procedureName = normalizeText_(row.procedura || row.procedure_id);
     if (!procedureName) {
       return;
     }
@@ -313,7 +375,8 @@ function buildProcedureConfigs_(procedureRows) {
       return;
     }
 
-    map[procedureName] = {
+    map[normalizeLookupKey_(procedureName)] = {
+      procedureName,
       schedule,
       warningDays: Math.max(0, toNumber_(row.dni_ostrzezenia, 2)),
     };
@@ -332,7 +395,8 @@ function createNextTaskFromCompleted_(completedTask) {
   }
 
   const proceduresByName = buildProcedureConfigs_(getObjectRows_(SHEET_NAMES.PROCEDURES));
-  const procedureConfig = proceduresByName[completedTask.procedureName];
+  const procedureConfig =
+    proceduresByName[normalizeLookupKey_(completedTask.procedureName)];
   if (!procedureConfig) {
     return false;
   }
@@ -347,7 +411,7 @@ function createNextTaskFromCompleted_(completedTask) {
 
   const taskKey = buildTaskKey_(
     completedTask.clientName,
-    completedTask.procedureName,
+    procedureConfig.procedureName,
     nextDueDate
   );
   const taskRows = getObjectRows_(SHEET_NAMES.TASKS);
@@ -371,9 +435,19 @@ function createNextTaskFromCompleted_(completedTask) {
   const assignments = getObjectRows_(SHEET_NAMES.ASSIGNMENTS).filter((row) =>
     toBoolean_(row.aktywna, true)
   );
-  const assignmentsByClient = buildAssignmentsByClient_(assignments);
+  const clients = getObjectRows_(SHEET_NAMES.CLIENTS).filter((row) =>
+    toBoolean_(row.aktywny, true)
+  );
+  const employees = getObjectRows_(SHEET_NAMES.EMPLOYEES).filter((row) =>
+    toBoolean_(row.aktywny, true)
+  );
+  const assignmentsByClient = buildAssignmentsByClient_(
+    assignments,
+    buildNameMapByKey_(clients, ['klient', 'client_id']),
+    buildNameMapByKey_(employees, ['pracownik', 'employee_id'])
+  );
   const employeeName = pickNextEmployeeForDate_(
-    assignmentsByClient[completedTask.clientName] || [],
+    assignmentsByClient[normalizeLookupKey_(completedTask.clientName)] || [],
     nextDueDate,
     completedTask.employeeName
   );
@@ -381,7 +455,7 @@ function createNextTaskFromCompleted_(completedTask) {
   const row = [
     Utilities.getUuid(),
     completedTask.clientName,
-    completedTask.procedureName,
+    procedureConfig.procedureName,
     employeeName,
     nextDueDate,
     STATUS.NEW,
@@ -397,6 +471,24 @@ function createNextTaskFromCompleted_(completedTask) {
     .getRange(taskSheet.getLastRow() + 1, 1, 1, HEADERS.TASKS.length)
     .setValues([row]);
   return true;
+}
+
+function buildNameMapByKey_(rows, fieldCandidates) {
+  const map = {};
+  rows.forEach((row) => {
+    let name = '';
+    for (let i = 0; i < fieldCandidates.length; i += 1) {
+      name = normalizeText_(row[fieldCandidates[i]]);
+      if (name) {
+        break;
+      }
+    }
+    if (!name) {
+      return;
+    }
+    map[normalizeLookupKey_(name)] = name;
+  });
+  return map;
 }
 
 function onEdit(e) {

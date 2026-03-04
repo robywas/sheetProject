@@ -75,6 +75,10 @@ function normalizeText_(value) {
   return String(value || '').trim();
 }
 
+function normalizeLookupKey_(value) {
+  return normalizeText_(value).toLowerCase();
+}
+
 function formatDateKey_(date) {
   return Utilities.formatDate(
     normalizeDate_(date),
