@@ -28,7 +28,6 @@ const HEADERS = Object.freeze({
     'pracownik',
     'data_od',
     'data_do',
-    'aktywna',
     'kolejnosc',
   ],
   TASKS: [

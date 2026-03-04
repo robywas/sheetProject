@@ -95,14 +95,14 @@ function seedSampleData() {
   ]);
 
   appendRowsIfOnlyHeader_(assignmentsSheet, [
-    ['Jan Kowalski', 'Agnieszka Opiekun', startDate, '', true, 1],
-    ['Jan Kowalski', 'Tomasz Opiekun', startDate, '', true, 2],
-    ['Anna Nowak', 'Tomasz Opiekun', startDate, '', true, 1],
-    ['Anna Nowak', 'Agnieszka Opiekun', startDate, '', true, 2],
-    ['Piotr Wisniewski', 'Agnieszka Opiekun', startDate, '', true, 1],
-    ['Piotr Wisniewski', 'Tomasz Opiekun', startDate, '', true, 2],
-    ['Maria Zielinska', 'Tomasz Opiekun', startDate, '', true, 1],
-    ['Maria Zielinska', 'Agnieszka Opiekun', startDate, '', true, 2],
+    ['Jan Kowalski', 'Agnieszka Opiekun', startDate, '', 1],
+    ['Jan Kowalski', 'Tomasz Opiekun', startDate, '', 2],
+    ['Anna Nowak', 'Tomasz Opiekun', startDate, '', 1],
+    ['Anna Nowak', 'Agnieszka Opiekun', startDate, '', 2],
+    ['Piotr Wisniewski', 'Agnieszka Opiekun', startDate, '', 1],
+    ['Piotr Wisniewski', 'Tomasz Opiekun', startDate, '', 2],
+    ['Maria Zielinska', 'Tomasz Opiekun', startDate, '', 1],
+    ['Maria Zielinska', 'Agnieszka Opiekun', startDate, '', 2],
   ]);
 
   SpreadsheetApp.getActiveSpreadsheet().toast(
@@ -188,7 +188,7 @@ function applyDataValidation_() {
     .setAllowInvalid(false)
     .setHelpText('Podaj liczbe >= 1.')
     .build();
-  assignmentsSheet.getRange(2, 6, assignmentRows, 1).setDataValidation(positiveIntegerRule);
+  assignmentsSheet.getRange(2, 5, assignmentRows, 1).setDataValidation(positiveIntegerRule);
 
   const clientNameRange = clientsSheet.getRange(2, 1, clientRows, 1);
   const procedureNameRange = proceduresSheet.getRange(2, 1, procedureRows, 1);
@@ -217,7 +217,6 @@ function applyDataValidation_() {
   assignmentsSheet.getRange(2, 1, assignmentRows, 1).setDataValidation(clientNameRule);
   assignmentsSheet.getRange(2, 2, assignmentRows, 1).setDataValidation(employeeNameRule);
 
-  assignmentsSheet.getRange(2, 5, assignmentRows, 1).insertCheckboxes();
 }
 
 function migrateIdBasedModelToNameModel_() {
@@ -314,20 +313,36 @@ function migrateIdBasedModelToNameModel_() {
     .filter((row) => normalizeText_(row[0]) && normalizeText_(row[1]));
 
   const migratedAssignments = assignmentsSnapshot.rows
-    .map((row) => [
-      getResolvedNameValue_(row, assignmentsSnapshot.indices, 'klient', 'client_id', clientIdToName),
-      getResolvedNameValue_(
-        row,
-        assignmentsSnapshot.indices,
-        'pracownik',
-        'employee_id',
-        employeeIdToName
-      ),
-      getNamedValue_(row, assignmentsSnapshot.indices, 'data_od'),
-      getNamedValue_(row, assignmentsSnapshot.indices, 'data_do'),
-      getNamedValue_(row, assignmentsSnapshot.indices, 'aktywna', '', true),
-      getNamedValue_(row, assignmentsSnapshot.indices, 'kolejnosc', '', 1),
-    ])
+    .map((row) => {
+      const isActive = toBoolean_(
+        getNamedValue_(row, assignmentsSnapshot.indices, 'aktywna', '', true),
+        true
+      );
+      if (!isActive) {
+        return null;
+      }
+
+      return [
+        getResolvedNameValue_(
+          row,
+          assignmentsSnapshot.indices,
+          'klient',
+          'client_id',
+          clientIdToName
+        ),
+        getResolvedNameValue_(
+          row,
+          assignmentsSnapshot.indices,
+          'pracownik',
+          'employee_id',
+          employeeIdToName
+        ),
+        getNamedValue_(row, assignmentsSnapshot.indices, 'data_od'),
+        getNamedValue_(row, assignmentsSnapshot.indices, 'data_do'),
+        getNamedValue_(row, assignmentsSnapshot.indices, 'kolejnosc', '', 1),
+      ];
+    })
+    .filter(Boolean)
     .filter((row) => normalizeText_(row[0]) && normalizeText_(row[1]));
 
   const migratedTasks = tasksSnapshot.rows

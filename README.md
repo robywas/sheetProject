@@ -52,6 +52,7 @@ Po uruchomieniu `setupWorkbook()` skrypt zaklada:
   - lista zagrozonych terminow,
   - obciazenie pracownikow,
   - podsumowanie klientow,
+  - globalny status wykonania dla wszystkich klientow,
   - filtry: status, pracownik, horyzont i prog zagrozenia.
 
 - `onEdit(e)`  
@@ -103,7 +104,7 @@ Panele boczne:
 1. W `Pracownicy` uzupelnij poprawne emaile kont Google.
 2. W `Procedury` ustaw `dzien_miesiaca` jako liczbe `1..31` lub `OSTATNI`.
 3. W `Przypisania` utrzymuj zakresy dat przypisania klienta do pracownika
-   i (opcjonalnie) `kolejnosc` do sterowania rotacja.
+   i `kolejnosc` do sterowania rotacja.
 4. Po dodaniu klienta powiaz go recznie z procedurami w `Klienci_Procedury`.
 5. Dodaj trigger czasowy (np. codziennie 06:00) dla `generateTasks30Days()`.
 6. Ustal workflow statusow (`NOWE`, `W_TRAKCIE`, `WYKONANE`) zgodny z Twoim procesem.

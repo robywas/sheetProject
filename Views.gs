@@ -70,6 +70,7 @@ function refreshManagerDashboard() {
   const dashboardSheet = getSheetOrThrow_(SHEET_NAMES.MANAGER_DASHBOARD);
   const previousFilters = readManagerFilters_(dashboardSheet);
 
+  const clientMasterRows = getObjectRows_(SHEET_NAMES.CLIENTS);
   const employeeRows = getObjectRows_(SHEET_NAMES.EMPLOYEES).filter((row) =>
     normalizeText_(row.pracownik || row.employee_id)
   );
@@ -99,6 +100,7 @@ function refreshManagerDashboard() {
       completedAt,
     };
   });
+  const allClientNames = getAllClientNames_(clientMasterRows, tasks);
 
   const tasksInScope = tasks
     .filter((task) =>
@@ -131,7 +133,11 @@ function refreshManagerDashboard() {
 
   ensureSheetSize_(
     dashboardSheet,
-    Math.max(DASHBOARD_MIN_ROWS, tasksInScope.length * 2 + 80),
+    Math.max(
+      DASHBOARD_MIN_ROWS,
+      tasksInScope.length * 2 + 80,
+      allClientNames.length + 120
+    ),
     7
   );
 
@@ -312,8 +318,156 @@ function refreshManagerDashboard() {
     dashboardSheet.getRange(clientLoadStartRow + 2, 1).setValue('Brak danych o klientach.');
   }
 
+  const globalClientStatusStartRow =
+    clientLoadStartRow + Math.max(clientLoadRows.length, 1) + 5;
+  dashboardSheet
+    .getRange(globalClientStatusStartRow, 1)
+    .setValue('Status wykonania dla wszystkich klientow')
+    .setFontWeight('bold');
+
+  const globalClientHeaders = [
+    'klient',
+    'status_globalny',
+    'otwarte',
+    'przeterminowane',
+    'na_horyzoncie',
+    'wykonane_30dni',
+    'najblizszy_termin',
+  ];
+  dashboardSheet
+    .getRange(globalClientStatusStartRow + 1, 1, 1, globalClientHeaders.length)
+    .setValues([globalClientHeaders])
+    .setFontWeight('bold')
+    .setBackground('#f1f3f4');
+
+  const globalClientRows = allClientNames.map((clientName) => {
+    const nameKey = normalizeLookupKey_(clientName);
+    const clientTasks = tasks.filter(
+      (task) => normalizeLookupKey_(task.clientName) === nameKey
+    );
+    const openClientTasks = clientTasks.filter((task) => task.status !== STATUS.DONE);
+    const overdueClientTasks = openClientTasks.filter(
+      (task) => task.dueDate && task.dueDate < today
+    );
+    const dueSoonClientTasks = openClientTasks.filter(
+      (task) =>
+        task.dueDate &&
+        task.dueDate >= today &&
+        task.dueDate <= dueSoonThreshold
+    );
+    const completedClientLast30 = clientTasks.filter(
+      (task) =>
+        task.status === STATUS.DONE &&
+        task.completedAt &&
+        task.completedAt >= last30Days
+    );
+
+    const nearestOpenDue = openClientTasks
+      .filter((task) => task.dueDate)
+      .sort((left, right) => left.dueDate - right.dueDate)[0];
+
+    let globalStatus = 'BRAK_ZADAN';
+    if (overdueClientTasks.length > 0) {
+      globalStatus = 'PRZETERMINOWANE';
+    } else if (dueSoonClientTasks.length > 0) {
+      globalStatus = 'RYZYKO';
+    } else if (openClientTasks.length > 0) {
+      globalStatus = 'W_TOKU';
+    } else if (completedClientLast30.length > 0) {
+      globalStatus = 'OK';
+    } else if (clientTasks.length > 0) {
+      globalStatus = 'BRAK_OTWARTYCH';
+    }
+
+    return [
+      clientName,
+      globalStatus,
+      openClientTasks.length,
+      overdueClientTasks.length,
+      dueSoonClientTasks.length,
+      completedClientLast30.length,
+      nearestOpenDue ? nearestOpenDue.dueDate : '',
+    ];
+  });
+
+  if (globalClientRows.length > 0) {
+    dashboardSheet
+      .getRange(
+        globalClientStatusStartRow + 2,
+        1,
+        globalClientRows.length,
+        globalClientHeaders.length
+      )
+      .setValues(globalClientRows);
+    dashboardSheet
+      .getRange(globalClientStatusStartRow + 2, 7, globalClientRows.length, 1)
+      .setNumberFormat('yyyy-mm-dd');
+    applyClientStatusFormatting_(
+      dashboardSheet,
+      globalClientStatusStartRow + 2,
+      globalClientRows.length
+    );
+  } else {
+    dashboardSheet
+      .getRange(globalClientStatusStartRow + 2, 1)
+      .setValue('Brak klientow do podsumowania.');
+  }
+
   applyManagerConditionalFormatting_(dashboardSheet, riskStartRow + 2, riskTasks.length);
   dashboardSheet.autoResizeColumns(1, 7);
+}
+
+function getAllClientNames_(clientRows, taskRows) {
+  const map = {};
+  clientRows.forEach((row) => {
+    const name = normalizeText_(row.klient || row.client_id);
+    if (!name) {
+      return;
+    }
+    map[normalizeLookupKey_(name)] = name;
+  });
+  taskRows.forEach((task) => {
+    const name = normalizeText_(task.clientName);
+    if (!name) {
+      return;
+    }
+    if (!map[normalizeLookupKey_(name)]) {
+      map[normalizeLookupKey_(name)] = name;
+    }
+  });
+  return Object.keys(map)
+    .map((key) => map[key])
+    .sort();
+}
+
+function applyClientStatusFormatting_(sheet, startRow, rowCount) {
+  if (!rowCount) {
+    return;
+  }
+
+  const statusRange = sheet.getRange(startRow, 2, rowCount, 1);
+  const statuses = statusRange.getValues();
+  statuses.forEach((statusRow, idx) => {
+    const status = normalizeText_(statusRow[0]).toUpperCase();
+    const cell = statusRange.getCell(idx + 1, 1);
+    if (status === 'PRZETERMINOWANE') {
+      cell.setBackground('#f8d7da');
+      return;
+    }
+    if (status === 'RYZYKO') {
+      cell.setBackground('#fff3cd');
+      return;
+    }
+    if (status === 'OK') {
+      cell.setBackground('#d4edda');
+      return;
+    }
+    if (status === 'W_TOKU') {
+      cell.setBackground('#e8f0fe');
+      return;
+    }
+    cell.setBackground('#f1f3f4');
+  });
 }
 
 function readManagerFilters_(sheet) {

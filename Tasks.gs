@@ -35,8 +35,10 @@ function generateRecurringTasks(daysAhead) {
   const clientProcedures = getObjectRows_(SHEET_NAMES.CLIENT_PROCEDURES).filter(
     (row) => normalizeText_(row.klient || row.client_id) && normalizeText_(row.procedura || row.procedure_id)
   );
-  const assignments = getObjectRows_(SHEET_NAMES.ASSIGNMENTS).filter((row) =>
-    toBoolean_(row.aktywna, true)
+  const assignments = getObjectRows_(SHEET_NAMES.ASSIGNMENTS).filter(
+    (row) =>
+      normalizeText_(row.klient || row.client_id) &&
+      normalizeText_(row.pracownik || row.employee_id)
   );
   const existingTasks = getObjectRows_(SHEET_NAMES.TASKS);
 
@@ -429,8 +431,10 @@ function createNextTaskFromCompleted_(completedTask) {
     return false;
   }
 
-  const assignments = getObjectRows_(SHEET_NAMES.ASSIGNMENTS).filter((row) =>
-    toBoolean_(row.aktywna, true)
+  const assignments = getObjectRows_(SHEET_NAMES.ASSIGNMENTS).filter(
+    (row) =>
+      normalizeText_(row.klient || row.client_id) &&
+      normalizeText_(row.pracownik || row.employee_id)
   );
   const clients = getObjectRows_(SHEET_NAMES.CLIENTS).filter((row) =>
     normalizeText_(row.klient)
@@ -545,7 +549,7 @@ function enforceMasterDataIntegerRulesOnEdit_(sheet, range) {
     return validateIntegerCell_(range, value, 0, 'W kolumnie dni_ostrzezenia wpisz liczbe calkowita >= 0.');
   }
 
-  if (sheetName === SHEET_NAMES.ASSIGNMENTS && col === 6) {
+  if (sheetName === SHEET_NAMES.ASSIGNMENTS && col === 5) {
     return validateIntegerCell_(range, value, 1, 'W kolumnie kolejnosc wpisz liczbe calkowita >= 1.');
   }
 
