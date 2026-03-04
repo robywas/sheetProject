@@ -398,14 +398,14 @@ function prepareManagerDashboardLayout_(sheet, employeeNames, previousFilters) {
     .setAllowInvalid(false)
     .build();
   const positiveIntegerRule = SpreadsheetApp.newDataValidation()
-    .requireFormulaSatisfied('=AND(ISNUMBER(B7),B7>=1,B7=INT(B7))')
+    .requireNumberGreaterThanOrEqualTo(1)
     .setAllowInvalid(false)
-    .setHelpText('Podaj liczbe calkowita >= 1.')
+    .setHelpText('Podaj liczbe >= 1.')
     .build();
   const nonNegativeIntegerRule = SpreadsheetApp.newDataValidation()
-    .requireFormulaSatisfied('=AND(ISNUMBER(B8),B8>=0,B8=INT(B8))')
+    .requireNumberGreaterThanOrEqualTo(0)
     .setAllowInvalid(false)
-    .setHelpText('Podaj liczbe calkowita >= 0.')
+    .setHelpText('Podaj liczbe >= 0.')
     .build();
 
   sheet.getRange('B5').setDataValidation(statusRule);

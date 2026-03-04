@@ -457,6 +457,17 @@ function enforceMasterDataIntegerRulesOnEdit_(sheet, range) {
     return validateIntegerCell_(range, value, 1, 'W kolumnie kolejnosc wpisz liczbe calkowita >= 1.');
   }
 
+  if (sheetName === SHEET_NAMES.MANAGER_DASHBOARD && (col === 2 && (range.getRow() === 7 || range.getRow() === 8))) {
+    const minValue = range.getRow() === 7 ? 1 : 0;
+    const label = range.getRow() === 7 ? 'Horyzont terminu' : 'Prog zagrozenia';
+    return validateIntegerCell_(
+      range,
+      value,
+      minValue,
+      label + ' musi byc liczba calkowita >= ' + minValue + '.'
+    );
+  }
+
   return false;
 }
 
