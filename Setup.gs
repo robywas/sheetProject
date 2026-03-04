@@ -140,7 +140,7 @@ function applyFormatting_() {
   assignmentsSheet.getRange('C:D').setNumberFormat('yyyy-mm-dd');
 
   const myTasksSheet = getSheetOrThrow_(SHEET_NAMES.MY_TASKS);
-  myTasksSheet.getRange('C:C').setNumberFormat('yyyy-mm-dd');
+  myTasksSheet.getRange('B:B').setNumberFormat('yyyy-mm-dd');
 }
 
 function applyDataHints_() {

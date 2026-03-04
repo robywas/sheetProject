@@ -37,7 +37,6 @@ function refreshMyTasksView() {
   }
 
   const rows = openTasks.map((task) => [
-    false,
     task.taskId,
     task.dueDate,
     task.clientName,
@@ -50,7 +49,14 @@ function refreshMyTasksView() {
   myTasksSheet
     .getRange(2, 1, rows.length, HEADERS.MY_TASKS.length)
     .setValues(rows);
-  myTasksSheet.getRange(2, 1, rows.length, 1).insertCheckboxes();
+
+  const statusRule = SpreadsheetApp.newDataValidation()
+    .requireValueInList([STATUS.NEW, STATUS.IN_PROGRESS, STATUS.DONE], true)
+    .setAllowInvalid(false)
+    .build();
+  myTasksSheet
+    .getRange(2, MY_TASKS_COL.STATUS, rows.length, 1)
+    .setDataValidation(statusRule);
   myTasksSheet.getRange(2, MY_TASKS_COL.DUE_DATE, rows.length, 1).setNumberFormat('yyyy-mm-dd');
 
   const today = normalizeDate_(new Date());
@@ -63,7 +69,6 @@ function refreshMyTasksView() {
     }
   });
 
-  myTasksSheet.autoResizeColumns(1, HEADERS.MY_TASKS.length);
 }
 
 function refreshManagerDashboard() {
@@ -414,7 +419,6 @@ function refreshManagerDashboard() {
   }
 
   applyManagerConditionalFormatting_(dashboardSheet, riskStartRow + 2, riskTasks.length);
-  dashboardSheet.autoResizeColumns(1, 7);
 }
 
 function getAllClientNames_(clientRows, taskRows) {

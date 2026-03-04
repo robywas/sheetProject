@@ -44,7 +44,6 @@ const HEADERS = Object.freeze({
     'dni_ostrzezenia',
   ],
   MY_TASKS: [
-    'oznacz_wykonane',
     'task_id',
     'termin',
     'klient',
@@ -69,13 +68,12 @@ const MANAGER_FILTER = Object.freeze({
 });
 
 const MY_TASKS_COL = Object.freeze({
-  CHECKBOX: 1,
-  TASK_ID: 2,
-  DUE_DATE: 3,
-  CLIENT: 4,
-  PROCEDURE: 5,
-  STATUS: 6,
-  NOTE: 7,
+  TASK_ID: 1,
+  DUE_DATE: 2,
+  CLIENT: 3,
+  PROCEDURE: 4,
+  STATUS: 5,
+  NOTE: 6,
 });
 
 const DEFAULT_GENERATION_DAYS = 30;

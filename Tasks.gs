@@ -280,6 +280,32 @@ function updateTaskNote_(taskId, note) {
   sheet.getRange(match.getRow(), 9).setValue(note);
 }
 
+function updateTaskStatus_(taskId, newStatus) {
+  const sheet = getSheetOrThrow_(SHEET_NAMES.TASKS);
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) {
+    return false;
+  }
+
+  const taskIdRange = sheet.getRange(2, 1, lastRow - 1, 1);
+  const match = taskIdRange
+    .createTextFinder(taskId)
+    .matchEntireCell(true)
+    .findNext();
+  if (!match) {
+    return false;
+  }
+
+  const rowNumber = match.getRow();
+  sheet.getRange(rowNumber, 6).setValue(newStatus);
+  if (newStatus === STATUS.DONE) {
+    sheet.getRange(rowNumber, 8).setValue(new Date());
+  } else {
+    sheet.getRange(rowNumber, 8).clearContent();
+  }
+  return true;
+}
+
 function buildAssignmentsByClient_(assignmentRows, clientsByKey, employeesByKey) {
   const map = {};
   assignmentRows.forEach((row) => {
@@ -526,7 +552,7 @@ function onEdit(e) {
   const row = e.range.getRow();
   const col = e.range.getColumn();
 
-  if (col === MY_TASKS_COL.CHECKBOX && e.value === 'TRUE') {
+  if (col === MY_TASKS_COL.STATUS) {
     const taskId = normalizeText_(
       sheet.getRange(row, MY_TASKS_COL.TASK_ID).getValue()
     );
@@ -534,8 +560,20 @@ function onEdit(e) {
       return;
     }
 
-    const completedTask = markTaskAsDone_(taskId);
-    createNextTaskFromCompleted_(completedTask);
+    const newStatus = normalizeText_(e.range.getValue()).toUpperCase();
+    const allowedStatuses = [STATUS.NEW, STATUS.IN_PROGRESS, STATUS.DONE];
+    if (!allowedStatuses.includes(newStatus)) {
+      refreshMyTasksView();
+      return;
+    }
+
+    if (newStatus === STATUS.DONE) {
+      const completedTask = markTaskAsDone_(taskId);
+      createNextTaskFromCompleted_(completedTask);
+    } else {
+      updateTaskStatus_(taskId, newStatus);
+    }
+
     refreshMyTasksView();
     refreshManagerDashboard();
     return;

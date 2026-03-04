@@ -44,7 +44,7 @@ Po uruchomieniu `setupWorkbook()` skrypt zaklada:
   Odswieza widok pracownika:
   - pokazuje tylko zadania przypisane do zalogowanego usera (po `email` z zakladki `Pracownicy`),
   - sortuje po terminie,
-  - pozwala oznaczac wykonanie checkboxem.
+  - pozwala zmieniac status (`NOWE`, `W_TRAKCIE`, `WYKONANE`).
 
 - `refreshManagerDashboard()`  
   Buduje dashboard managera:
@@ -56,8 +56,8 @@ Po uruchomieniu `setupWorkbook()` skrypt zaklada:
   - filtry: status, pracownik, horyzont i prog zagrozenia.
 
 - `onEdit(e)`  
-  Gdy pracownik zaznaczy checkbox w `Moje_zadania`:
-  - zadanie przechodzi do statusu `WYKONANE`,
+  Gdy pracownik zmieni status w `Moje_zadania`:
+  - status `WYKONANE` zamyka zadanie,
   - automatycznie tworzy sie kolejne zadanie (nastepny miesiac),
   - nowe zadanie jest przypisywane do kolejnego pracownika z puli klienta.
 
