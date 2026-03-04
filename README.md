@@ -8,6 +8,8 @@ Gotowy szablon Google Apps Script do obslugi regularnych procedur medyczno-opiek
 - widok pracownika ("Moje_zadania"),
 - widok managera ("Dashboard_managera" + panel boczny).
 
+Model danych dziala na nazwach (`klient`, `pracownik`, `procedura`) bez osobnych kolumn ID.
+
 ## 1) Struktura danych (zakladki)
 
 Po uruchomieniu `setupWorkbook()` skrypt zaklada:
@@ -36,7 +38,7 @@ Po uruchomieniu `setupWorkbook()` skrypt zaklada:
   - uwzglednia aktywne relacje klient-procedura,
   - uwzglednia `dzien_miesiaca` procedury (`1..31` lub `OSTATNI`),
   - przypisuje pracownika wg zakladki `Przypisania` (z rotacja wg `kolejnosc`),
-  - nie duplikuje zadan (klucz: `client_id|procedure_id|due_date`).
+  - nie duplikuje zadan (klucz: `klient|procedura|due_date`).
 
 - `refreshMyTasksView()`  
   Odswieza widok pracownika:
@@ -113,7 +115,7 @@ Po `setupWorkbook()` skrypt ustawia:
 - `Procedury!dzien_miesiaca` - dropdown `1..31` + `OSTATNI`,
 - `Procedury!dni_ostrzezenia` - liczba calkowita >= 0,
 - `Przypisania!kolejnosc` - liczba calkowita >= 1,
-- walidacje `client_id`, `procedure_id`, `employee_id` na podstawie slownikow,
+- walidacje nazw `klient`, `procedura`, `pracownik` na podstawie slownikow,
 - checkboxy dla kolumn aktywnosci,
 - dodatkowa kontrola przy edycji (onEdit), ktora czyści nieprawidlowe liczby niecalkowite
   w `dni_ostrzezenia` i `kolejnosc`.

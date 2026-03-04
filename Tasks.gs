@@ -31,11 +31,11 @@ function generateRecurringTasks(daysAhead) {
   );
   const existingTasks = getObjectRows_(SHEET_NAMES.TASKS);
 
-  const activeClientIds = new Set(
-    clients.map((row) => normalizeText_(row.client_id)).filter(Boolean)
+  const activeClientNames = new Set(
+    clients.map((row) => normalizeText_(row.klient)).filter(Boolean)
   );
 
-  const proceduresById = buildProcedureConfigs_(procedures);
+  const proceduresByName = buildProcedureConfigs_(procedures);
 
   const assignmentsByClient = buildAssignmentsByClient_(assignments);
   const existingKeys = new Set();
@@ -43,40 +43,42 @@ function generateRecurringTasks(daysAhead) {
   const lastTaskByPair = {};
 
   existingTasks.forEach((row) => {
-    const clientId = normalizeText_(row.client_id);
-    const procedureId = normalizeText_(row.procedure_id);
-    const employeeId = normalizeText_(row.employee_id);
+    const clientName = normalizeText_(row.klient);
+    const procedureName = normalizeText_(row.procedura);
+    const employeeName = normalizeText_(row.pracownik);
     const dueDate = toDate_(row.due_date);
-    if (!clientId || !procedureId || !dueDate) {
+    if (!clientName || !procedureName || !dueDate) {
       return;
     }
 
-    const taskKey = normalizeText_(row.task_key) || buildTaskKey_(clientId, procedureId, dueDate);
+    const taskKey =
+      normalizeText_(row.task_key) ||
+      buildTaskKey_(clientName, procedureName, dueDate);
     existingKeys.add(taskKey);
-    employeeByTaskKey[taskKey] = employeeId;
+    employeeByTaskKey[taskKey] = employeeName;
 
-    const pairKey = clientId + '|' + procedureId;
+    const pairKey = clientName + '|' + procedureName;
     const current = lastTaskByPair[pairKey];
     if (!current || dueDate > current.dueDate) {
       lastTaskByPair[pairKey] = {
         dueDate,
-        employeeId,
+        employeeName,
       };
     }
   });
 
   const newRows = [];
   clientProcedures.forEach((relation) => {
-    const clientId = normalizeText_(relation.client_id);
-    const procedureId = normalizeText_(relation.procedure_id);
-    if (!clientId || !procedureId) {
+    const clientName = normalizeText_(relation.klient);
+    const procedureName = normalizeText_(relation.procedura);
+    if (!clientName || !procedureName) {
       return;
     }
-    if (!activeClientIds.has(clientId)) {
+    if (!activeClientNames.has(clientName)) {
       return;
     }
 
-    const procedure = proceduresById[procedureId];
+    const procedure = proceduresByName[procedureName];
     if (!procedure) {
       return;
     }
@@ -87,9 +89,9 @@ function generateRecurringTasks(daysAhead) {
       return;
     }
 
-    const pairKey = clientId + '|' + procedureId;
-    let previousEmployeeId = lastTaskByPair[pairKey]
-      ? normalizeText_(lastTaskByPair[pairKey].employeeId)
+    const pairKey = clientName + '|' + procedureName;
+    let previousEmployeeName = lastTaskByPair[pairKey]
+      ? normalizeText_(lastTaskByPair[pairKey].employeeName)
       : '';
 
     const months = getMonthStartsBetween_(windowStart, horizon);
@@ -106,23 +108,23 @@ function generateRecurringTasks(daysAhead) {
         return;
       }
 
-      const taskKey = buildTaskKey_(clientId, procedureId, normalizedDueDate);
+      const taskKey = buildTaskKey_(clientName, procedureName, normalizedDueDate);
       if (existingKeys.has(taskKey)) {
-        previousEmployeeId = employeeByTaskKey[taskKey] || previousEmployeeId;
+        previousEmployeeName = employeeByTaskKey[taskKey] || previousEmployeeName;
         return;
       }
 
-      const employeeId = pickNextEmployeeForDate_(
-        assignmentsByClient[clientId] || [],
+      const employeeName = pickNextEmployeeForDate_(
+        assignmentsByClient[clientName] || [],
         normalizedDueDate,
-        previousEmployeeId
+        previousEmployeeName
       );
 
       newRows.push([
         Utilities.getUuid(),
-        clientId,
-        procedureId,
-        employeeId,
+        clientName,
+        procedureName,
+        employeeName,
         normalizedDueDate,
         STATUS.NEW,
         new Date(),
@@ -131,9 +133,9 @@ function generateRecurringTasks(daysAhead) {
         taskKey,
         procedure.warningDays || 0,
       ]);
-      previousEmployeeId = employeeId || previousEmployeeId;
+      previousEmployeeName = employeeName || previousEmployeeName;
       existingKeys.add(taskKey);
-      employeeByTaskKey[taskKey] = employeeId;
+      employeeByTaskKey[taskKey] = employeeName;
     });
   });
 
@@ -168,9 +170,9 @@ function markTaskAsDone_(taskId) {
   const rowValues = sheet.getRange(row, 1, 1, HEADERS.TASKS.length).getValues()[0];
   const completedTask = {
     taskId: normalizeText_(rowValues[0]),
-    clientId: normalizeText_(rowValues[1]),
-    procedureId: normalizeText_(rowValues[2]),
-    employeeId: normalizeText_(rowValues[3]),
+    clientName: normalizeText_(rowValues[1]),
+    procedureName: normalizeText_(rowValues[2]),
+    employeeName: normalizeText_(rowValues[3]),
     dueDate: toDate_(rowValues[4]),
     status: normalizeText_(rowValues[5]),
   };
@@ -206,60 +208,60 @@ function updateTaskNote_(taskId, note) {
 function buildAssignmentsByClient_(assignmentRows) {
   const map = {};
   assignmentRows.forEach((row) => {
-    const clientId = normalizeText_(row.client_id);
-    const employeeId = normalizeText_(row.employee_id);
-    if (!clientId || !employeeId) {
+    const clientName = normalizeText_(row.klient);
+    const employeeName = normalizeText_(row.pracownik);
+    if (!clientName || !employeeName) {
       return;
     }
 
-    if (!map[clientId]) {
-      map[clientId] = [];
+    if (!map[clientName]) {
+      map[clientName] = [];
     }
 
-    map[clientId].push({
-      employeeId: employeeId,
+    map[clientName].push({
+      employeeName: employeeName,
       fromDate: toDate_(row.data_od),
       toDate: toDate_(row.data_do),
       order: Math.max(1, toNumber_(row.kolejnosc, 9999)),
     });
   });
 
-  Object.keys(map).forEach((clientId) => {
-    map[clientId].sort((left, right) => {
+  Object.keys(map).forEach((clientName) => {
+    map[clientName].sort((left, right) => {
       if (left.order !== right.order) {
         return left.order - right.order;
       }
-      return left.employeeId.localeCompare(right.employeeId);
+      return left.employeeName.localeCompare(right.employeeName);
     });
   });
 
   return map;
 }
 
-function pickNextEmployeeForDate_(clientAssignments, dueDate, previousEmployeeId) {
-  const eligibleEmployeeIds = getEligibleEmployeeIdsForDate_(
+function pickNextEmployeeForDate_(clientAssignments, dueDate, previousEmployeeName) {
+  const eligibleEmployeeNames = getEligibleEmployeeNamesForDate_(
     clientAssignments,
     dueDate
   );
-  if (eligibleEmployeeIds.length === 0) {
+  if (eligibleEmployeeNames.length === 0) {
     return '';
   }
 
-  if (!previousEmployeeId) {
-    return eligibleEmployeeIds[0];
+  if (!previousEmployeeName) {
+    return eligibleEmployeeNames[0];
   }
 
-  const currentIdx = eligibleEmployeeIds.indexOf(previousEmployeeId);
+  const currentIdx = eligibleEmployeeNames.indexOf(previousEmployeeName);
   if (currentIdx === -1) {
-    return eligibleEmployeeIds[0];
+    return eligibleEmployeeNames[0];
   }
-  if (eligibleEmployeeIds.length === 1) {
-    return eligibleEmployeeIds[0];
+  if (eligibleEmployeeNames.length === 1) {
+    return eligibleEmployeeNames[0];
   }
-  return eligibleEmployeeIds[(currentIdx + 1) % eligibleEmployeeIds.length];
+  return eligibleEmployeeNames[(currentIdx + 1) % eligibleEmployeeNames.length];
 }
 
-function getEligibleEmployeeIdsForDate_(clientAssignments, dueDate) {
+function getEligibleEmployeeNamesForDate_(clientAssignments, dueDate) {
   if (!clientAssignments || clientAssignments.length === 0) {
     return [];
   }
@@ -279,17 +281,17 @@ function getEligibleEmployeeIdsForDate_(clientAssignments, dueDate) {
     if (left.order !== right.order) {
       return left.order - right.order;
     }
-    return left.employeeId.localeCompare(right.employeeId);
+    return left.employeeName.localeCompare(right.employeeName);
   });
 
   const unique = [];
   const seen = new Set();
   sorted.forEach((assignment) => {
-    if (seen.has(assignment.employeeId)) {
+    if (seen.has(assignment.employeeName)) {
       return;
     }
-    seen.add(assignment.employeeId);
-    unique.push(assignment.employeeId);
+    seen.add(assignment.employeeName);
+    unique.push(assignment.employeeName);
   });
   return unique;
 }
@@ -301,8 +303,8 @@ function buildProcedureConfigs_(procedureRows) {
       return;
     }
 
-    const procedureId = normalizeText_(row.procedure_id);
-    if (!procedureId) {
+    const procedureName = normalizeText_(row.procedura);
+    if (!procedureName) {
       return;
     }
 
@@ -311,7 +313,7 @@ function buildProcedureConfigs_(procedureRows) {
       return;
     }
 
-    map[procedureId] = {
+    map[procedureName] = {
       schedule,
       warningDays: Math.max(0, toNumber_(row.dni_ostrzezenia, 2)),
     };
@@ -322,15 +324,15 @@ function buildProcedureConfigs_(procedureRows) {
 function createNextTaskFromCompleted_(completedTask) {
   if (
     !completedTask ||
-    !completedTask.clientId ||
-    !completedTask.procedureId ||
+    !completedTask.clientName ||
+    !completedTask.procedureName ||
     !completedTask.dueDate
   ) {
     return false;
   }
 
-  const proceduresById = buildProcedureConfigs_(getObjectRows_(SHEET_NAMES.PROCEDURES));
-  const procedureConfig = proceduresById[completedTask.procedureId];
+  const proceduresByName = buildProcedureConfigs_(getObjectRows_(SHEET_NAMES.PROCEDURES));
+  const procedureConfig = proceduresByName[completedTask.procedureName];
   if (!procedureConfig) {
     return false;
   }
@@ -344,22 +346,22 @@ function createNextTaskFromCompleted_(completedTask) {
   }
 
   const taskKey = buildTaskKey_(
-    completedTask.clientId,
-    completedTask.procedureId,
+    completedTask.clientName,
+    completedTask.procedureName,
     nextDueDate
   );
   const taskRows = getObjectRows_(SHEET_NAMES.TASKS);
   const exists = taskRows.some((row) => {
-    const existingClientId = normalizeText_(row.client_id);
-    const existingProcedureId = normalizeText_(row.procedure_id);
+    const existingClientName = normalizeText_(row.klient);
+    const existingProcedureName = normalizeText_(row.procedura);
     const dueDate = toDate_(row.due_date);
-    if (!existingClientId || !existingProcedureId || !dueDate) {
+    if (!existingClientName || !existingProcedureName || !dueDate) {
       return false;
     }
 
     const existingKey =
       normalizeText_(row.task_key) ||
-      buildTaskKey_(existingClientId, existingProcedureId, dueDate);
+      buildTaskKey_(existingClientName, existingProcedureName, dueDate);
     return existingKey === taskKey;
   });
   if (exists) {
@@ -370,17 +372,17 @@ function createNextTaskFromCompleted_(completedTask) {
     toBoolean_(row.aktywna, true)
   );
   const assignmentsByClient = buildAssignmentsByClient_(assignments);
-  const employeeId = pickNextEmployeeForDate_(
-    assignmentsByClient[completedTask.clientId] || [],
+  const employeeName = pickNextEmployeeForDate_(
+    assignmentsByClient[completedTask.clientName] || [],
     nextDueDate,
-    completedTask.employeeId
+    completedTask.employeeName
   );
 
   const row = [
     Utilities.getUuid(),
-    completedTask.clientId,
-    completedTask.procedureId,
-    employeeId,
+    completedTask.clientName,
+    completedTask.procedureName,
+    employeeName,
     nextDueDate,
     STATUS.NEW,
     new Date(),
@@ -449,7 +451,7 @@ function enforceMasterDataIntegerRulesOnEdit_(sheet, range) {
   const col = range.getColumn();
   const value = range.getValue();
 
-  if (sheetName === SHEET_NAMES.PROCEDURES && col === 5) {
+  if (sheetName === SHEET_NAMES.PROCEDURES && col === 4) {
     return validateIntegerCell_(range, value, 0, 'W kolumnie dni_ostrzezenia wpisz liczbe calkowita >= 0.');
   }
 

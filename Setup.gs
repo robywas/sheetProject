@@ -1,6 +1,16 @@
 function setupWorkbook() {
   const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
   migrateLegacySheetNames_(spreadsheet);
+  ensureSheetExists_(spreadsheet, SHEET_NAMES.PROCEDURES);
+  ensureSheetExists_(spreadsheet, SHEET_NAMES.CLIENTS);
+  ensureSheetExists_(spreadsheet, SHEET_NAMES.EMPLOYEES);
+  ensureSheetExists_(spreadsheet, SHEET_NAMES.CLIENT_PROCEDURES);
+  ensureSheetExists_(spreadsheet, SHEET_NAMES.ASSIGNMENTS);
+  ensureSheetExists_(spreadsheet, SHEET_NAMES.TASKS);
+  ensureSheetExists_(spreadsheet, SHEET_NAMES.MY_TASKS);
+  ensureSheetExists_(spreadsheet, SHEET_NAMES.MANAGER_DASHBOARD);
+
+  migrateIdBasedModelToNameModel_();
 
   ensureSheetWithHeader_(
     spreadsheet,
@@ -25,11 +35,6 @@ function setupWorkbook() {
   );
   ensureSheetWithHeader_(spreadsheet, SHEET_NAMES.TASKS, HEADERS.TASKS);
   ensureSheetWithHeader_(spreadsheet, SHEET_NAMES.MY_TASKS, HEADERS.MY_TASKS);
-
-  const dashboardSheet = spreadsheet.getSheetByName(SHEET_NAMES.MANAGER_DASHBOARD);
-  if (!dashboardSheet) {
-    spreadsheet.insertSheet(SHEET_NAMES.MANAGER_DASHBOARD);
-  }
 
   applyFormatting_();
   applyDataHints_();
@@ -56,22 +61,22 @@ function seedSampleData() {
   const assignmentsSheet = getSheetOrThrow_(SHEET_NAMES.ASSIGNMENTS);
 
   appendRowsIfOnlyHeader_(proceduresSheet, [
-    ['P001', 'Kontrola cisnienia', 'Pomiar i zapis wyniku', 10, 2, true],
-    ['P002', 'Kontrola glikemii', 'Pobranie i wpisanie wyniku', SCHEDULE_LAST_DAY_TOKEN, 1, true],
-    ['P003', 'Ocena rany', 'Kontrola i dokumentacja', 15, 3, true],
+    ['Kontrola cisnienia', 'Pomiar i zapis wyniku', 10, 2, true],
+    ['Kontrola glikemii', 'Pobranie i wpisanie wyniku', SCHEDULE_LAST_DAY_TOKEN, 1, true],
+    ['Ocena rany', 'Kontrola i dokumentacja', 15, 3, true],
   ]);
 
   appendRowsIfOnlyHeader_(clientsSheet, [
-    ['CL001', 'Jan Kowalski', true],
-    ['CL002', 'Anna Nowak', true],
-    ['CL003', 'Piotr Wisniewski', true],
-    ['CL004', 'Maria Zielinska', true],
+    ['Jan Kowalski', true],
+    ['Anna Nowak', true],
+    ['Piotr Wisniewski', true],
+    ['Maria Zielinska', true],
   ]);
 
   appendRowsIfOnlyHeader_(employeesSheet, [
-    ['E001', 'Agnieszka Opiekun', 'agnieszka.opiekun@example.com', 'pracownik', true],
-    ['E002', 'Tomasz Opiekun', 'tomasz.opiekun@example.com', 'pracownik', true],
-    ['M001', 'Monika Manager', 'monika.manager@example.com', 'manager', true],
+    ['Agnieszka Opiekun', 'agnieszka.opiekun@example.com', 'pracownik', true],
+    ['Tomasz Opiekun', 'tomasz.opiekun@example.com', 'pracownik', true],
+    ['Monika Manager', 'monika.manager@example.com', 'manager', true],
   ]);
 
   const today = normalizeDate_(new Date());
@@ -79,22 +84,22 @@ function seedSampleData() {
   startDate.setDate(1);
 
   appendRowsIfOnlyHeader_(clientProceduresSheet, [
-    ['CL001', 'P001', startDate, true],
-    ['CL001', 'P002', startDate, true],
-    ['CL002', 'P003', startDate, true],
-    ['CL003', 'P001', startDate, true],
-    ['CL004', 'P002', startDate, true],
+    ['Jan Kowalski', 'Kontrola cisnienia', startDate, true],
+    ['Jan Kowalski', 'Kontrola glikemii', startDate, true],
+    ['Anna Nowak', 'Ocena rany', startDate, true],
+    ['Piotr Wisniewski', 'Kontrola cisnienia', startDate, true],
+    ['Maria Zielinska', 'Kontrola glikemii', startDate, true],
   ]);
 
   appendRowsIfOnlyHeader_(assignmentsSheet, [
-    ['CL001', 'E001', startDate, '', true, 1],
-    ['CL001', 'E002', startDate, '', true, 2],
-    ['CL002', 'E002', startDate, '', true, 1],
-    ['CL002', 'E001', startDate, '', true, 2],
-    ['CL003', 'E001', startDate, '', true, 1],
-    ['CL003', 'E002', startDate, '', true, 2],
-    ['CL004', 'E002', startDate, '', true, 1],
-    ['CL004', 'E001', startDate, '', true, 2],
+    ['Jan Kowalski', 'Agnieszka Opiekun', startDate, '', true, 1],
+    ['Jan Kowalski', 'Tomasz Opiekun', startDate, '', true, 2],
+    ['Anna Nowak', 'Tomasz Opiekun', startDate, '', true, 1],
+    ['Anna Nowak', 'Agnieszka Opiekun', startDate, '', true, 2],
+    ['Piotr Wisniewski', 'Agnieszka Opiekun', startDate, '', true, 1],
+    ['Piotr Wisniewski', 'Tomasz Opiekun', startDate, '', true, 2],
+    ['Maria Zielinska', 'Tomasz Opiekun', startDate, '', true, 1],
+    ['Maria Zielinska', 'Agnieszka Opiekun', startDate, '', true, 2],
   ]);
 
   SpreadsheetApp.getActiveSpreadsheet().toast(
@@ -137,7 +142,7 @@ function applyFormatting_() {
 
 function applyDataHints_() {
   const proceduresSheet = getSheetOrThrow_(SHEET_NAMES.PROCEDURES);
-  proceduresSheet.getRange('D1').setNote(
+  proceduresSheet.getRange('C1').setNote(
     'Podaj dzien miesiaca: 1..31 lub "' + SCHEDULE_LAST_DAY_TOKEN + '".'
   );
 }
@@ -166,14 +171,14 @@ function applyDataValidation_() {
     .setAllowInvalid(false)
     .setHelpText('Dozwolone: 1..31 lub OSTATNI.')
     .build();
-  proceduresSheet.getRange(2, 4, procedureRows, 1).setDataValidation(monthDayRule);
+  proceduresSheet.getRange(2, 3, procedureRows, 1).setDataValidation(monthDayRule);
 
   const nonNegativeIntegerRule = SpreadsheetApp.newDataValidation()
     .requireNumberGreaterThanOrEqualTo(0)
     .setAllowInvalid(false)
     .setHelpText('Podaj liczbe >= 0.')
     .build();
-  proceduresSheet.getRange(2, 5, procedureRows, 1).setDataValidation(nonNegativeIntegerRule);
+  proceduresSheet.getRange(2, 4, procedureRows, 1).setDataValidation(nonNegativeIntegerRule);
 
   const positiveIntegerRule = SpreadsheetApp.newDataValidation()
     .requireNumberGreaterThanOrEqualTo(1)
@@ -182,37 +187,263 @@ function applyDataValidation_() {
     .build();
   assignmentsSheet.getRange(2, 6, assignmentRows, 1).setDataValidation(positiveIntegerRule);
 
-  const clientIdRange = clientsSheet.getRange(2, 1, clientRows, 1);
-  const procedureIdRange = proceduresSheet.getRange(2, 1, procedureRows, 1);
-  const employeeIdRange = employeesSheet.getRange(2, 1, employeeRows, 1);
+  const clientNameRange = clientsSheet.getRange(2, 1, clientRows, 1);
+  const procedureNameRange = proceduresSheet.getRange(2, 1, procedureRows, 1);
+  const employeeNameRange = employeesSheet.getRange(2, 1, employeeRows, 1);
 
-  const clientIdRule = SpreadsheetApp.newDataValidation()
-    .requireValueInRange(clientIdRange, true)
+  const clientNameRule = SpreadsheetApp.newDataValidation()
+    .requireValueInRange(clientNameRange, true)
     .setAllowInvalid(false)
-    .setHelpText('Wybierz client_id z zakladki Klienci.')
+    .setHelpText('Wybierz klienta z zakladki Klienci.')
     .build();
-  const procedureIdRule = SpreadsheetApp.newDataValidation()
-    .requireValueInRange(procedureIdRange, true)
+  const procedureNameRule = SpreadsheetApp.newDataValidation()
+    .requireValueInRange(procedureNameRange, true)
     .setAllowInvalid(false)
-    .setHelpText('Wybierz procedure_id z zakladki Procedury.')
+    .setHelpText('Wybierz procedure z zakladki Procedury.')
     .build();
-  const employeeIdRule = SpreadsheetApp.newDataValidation()
-    .requireValueInRange(employeeIdRange, true)
+  const employeeNameRule = SpreadsheetApp.newDataValidation()
+    .requireValueInRange(employeeNameRange, true)
     .setAllowInvalid(false)
-    .setHelpText('Wybierz employee_id z zakladki Pracownicy.')
+    .setHelpText('Wybierz pracownika z zakladki Pracownicy.')
     .build();
 
-  clientProceduresSheet.getRange(2, 1, clientProcedureRows, 1).setDataValidation(clientIdRule);
+  clientProceduresSheet.getRange(2, 1, clientProcedureRows, 1).setDataValidation(clientNameRule);
   clientProceduresSheet
     .getRange(2, 2, clientProcedureRows, 1)
-    .setDataValidation(procedureIdRule);
-  assignmentsSheet.getRange(2, 1, assignmentRows, 1).setDataValidation(clientIdRule);
-  assignmentsSheet.getRange(2, 2, assignmentRows, 1).setDataValidation(employeeIdRule);
+    .setDataValidation(procedureNameRule);
+  assignmentsSheet.getRange(2, 1, assignmentRows, 1).setDataValidation(clientNameRule);
+  assignmentsSheet.getRange(2, 2, assignmentRows, 1).setDataValidation(employeeNameRule);
 
-  proceduresSheet.getRange(2, 6, procedureRows, 1).insertCheckboxes();
-  clientsSheet.getRange(2, 3, clientRows, 1).insertCheckboxes();
+  proceduresSheet.getRange(2, 5, procedureRows, 1).insertCheckboxes();
+  clientsSheet.getRange(2, 2, clientRows, 1).insertCheckboxes();
+  employeesSheet.getRange(2, 4, employeeRows, 1).insertCheckboxes();
   clientProceduresSheet.getRange(2, 4, clientProcedureRows, 1).insertCheckboxes();
   assignmentsSheet.getRange(2, 5, assignmentRows, 1).insertCheckboxes();
+}
+
+function migrateIdBasedModelToNameModel_() {
+  const proceduresSnapshot = readSheetSnapshot_(SHEET_NAMES.PROCEDURES);
+  const clientsSnapshot = readSheetSnapshot_(SHEET_NAMES.CLIENTS);
+  const employeesSnapshot = readSheetSnapshot_(SHEET_NAMES.EMPLOYEES);
+  const clientProceduresSnapshot = readSheetSnapshot_(SHEET_NAMES.CLIENT_PROCEDURES);
+  const assignmentsSnapshot = readSheetSnapshot_(SHEET_NAMES.ASSIGNMENTS);
+  const tasksSnapshot = readSheetSnapshot_(SHEET_NAMES.TASKS);
+
+  const clientIdToName = buildIdToNameMap_(clientsSnapshot, 'client_id', 'klient');
+  const procedureIdToName = buildIdToNameMap_(proceduresSnapshot, 'procedure_id', 'procedura');
+  const employeeIdToName = buildIdToNameMap_(employeesSnapshot, 'employee_id', 'pracownik');
+
+  const migratedProcedures = proceduresSnapshot.rows
+    .map((row) => [
+      getNamedValue_(row, proceduresSnapshot.indices, 'procedura', 'procedure_id'),
+      getNamedValue_(row, proceduresSnapshot.indices, 'opis'),
+      getNamedValue_(row, proceduresSnapshot.indices, 'dzien_miesiaca'),
+      getNamedValue_(row, proceduresSnapshot.indices, 'dni_ostrzezenia'),
+      getNamedValue_(row, proceduresSnapshot.indices, 'aktywna', '', true),
+    ])
+    .filter((row) => normalizeText_(row[0]));
+
+  const migratedClients = clientsSnapshot.rows
+    .map((row) => [
+      getNamedValue_(row, clientsSnapshot.indices, 'klient', 'client_id'),
+      getNamedValue_(row, clientsSnapshot.indices, 'aktywny', '', true),
+    ])
+    .filter((row) => normalizeText_(row[0]));
+
+  const migratedEmployees = employeesSnapshot.rows
+    .map((row) => [
+      getNamedValue_(row, employeesSnapshot.indices, 'pracownik', 'employee_id'),
+      getNamedValue_(row, employeesSnapshot.indices, 'email'),
+      getNamedValue_(row, employeesSnapshot.indices, 'rola'),
+      getNamedValue_(row, employeesSnapshot.indices, 'aktywny', '', true),
+    ])
+    .filter((row) => normalizeText_(row[0]));
+
+  const migratedClientProcedures = clientProceduresSnapshot.rows
+    .map((row) => [
+      getResolvedNameValue_(
+        row,
+        clientProceduresSnapshot.indices,
+        'klient',
+        'client_id',
+        clientIdToName
+      ),
+      getResolvedNameValue_(
+        row,
+        clientProceduresSnapshot.indices,
+        'procedura',
+        'procedure_id',
+        procedureIdToName
+      ),
+      getNamedValue_(row, clientProceduresSnapshot.indices, 'data_start'),
+      getNamedValue_(row, clientProceduresSnapshot.indices, 'aktywna', '', true),
+    ])
+    .filter((row) => normalizeText_(row[0]) && normalizeText_(row[1]));
+
+  const migratedAssignments = assignmentsSnapshot.rows
+    .map((row) => [
+      getResolvedNameValue_(row, assignmentsSnapshot.indices, 'klient', 'client_id', clientIdToName),
+      getResolvedNameValue_(
+        row,
+        assignmentsSnapshot.indices,
+        'pracownik',
+        'employee_id',
+        employeeIdToName
+      ),
+      getNamedValue_(row, assignmentsSnapshot.indices, 'data_od'),
+      getNamedValue_(row, assignmentsSnapshot.indices, 'data_do'),
+      getNamedValue_(row, assignmentsSnapshot.indices, 'aktywna', '', true),
+      getNamedValue_(row, assignmentsSnapshot.indices, 'kolejnosc', '', 1),
+    ])
+    .filter((row) => normalizeText_(row[0]) && normalizeText_(row[1]));
+
+  const migratedTasks = tasksSnapshot.rows
+    .map((row) => {
+      const taskId =
+        getNamedValue_(row, tasksSnapshot.indices, 'task_id') || Utilities.getUuid();
+      const clientName = getResolvedNameValue_(
+        row,
+        tasksSnapshot.indices,
+        'klient',
+        'client_id',
+        clientIdToName
+      );
+      const procedureName = getResolvedNameValue_(
+        row,
+        tasksSnapshot.indices,
+        'procedura',
+        'procedure_id',
+        procedureIdToName
+      );
+      const employeeName = getResolvedNameValue_(
+        row,
+        tasksSnapshot.indices,
+        'pracownik',
+        'employee_id',
+        employeeIdToName
+      );
+      const dueDate = getNamedValue_(row, tasksSnapshot.indices, 'due_date');
+      const taskKey =
+        normalizeText_(getNamedValue_(row, tasksSnapshot.indices, 'task_key')) ||
+        (clientName && procedureName && dueDate
+          ? buildTaskKey_(clientName, procedureName, dueDate)
+          : '');
+
+      return [
+        taskId,
+        clientName,
+        procedureName,
+        employeeName,
+        dueDate,
+        getNamedValue_(row, tasksSnapshot.indices, 'status', '', STATUS.NEW),
+        getNamedValue_(row, tasksSnapshot.indices, 'created_at'),
+        getNamedValue_(row, tasksSnapshot.indices, 'completed_at'),
+        getNamedValue_(row, tasksSnapshot.indices, 'notes'),
+        taskKey,
+        getNamedValue_(row, tasksSnapshot.indices, 'dni_ostrzezenia', '', 0),
+      ];
+    })
+    .filter((row) => normalizeText_(row[1]) && normalizeText_(row[2]));
+
+  writeMigratedSheet_(proceduresSnapshot.sheet, HEADERS.PROCEDURES, migratedProcedures);
+  writeMigratedSheet_(clientsSnapshot.sheet, HEADERS.CLIENTS, migratedClients);
+  writeMigratedSheet_(employeesSnapshot.sheet, HEADERS.EMPLOYEES, migratedEmployees);
+  writeMigratedSheet_(
+    clientProceduresSnapshot.sheet,
+    HEADERS.CLIENT_PROCEDURES,
+    migratedClientProcedures
+  );
+  writeMigratedSheet_(assignmentsSnapshot.sheet, HEADERS.ASSIGNMENTS, migratedAssignments);
+  writeMigratedSheet_(tasksSnapshot.sheet, HEADERS.TASKS, migratedTasks);
+}
+
+function ensureSheetExists_(spreadsheet, sheetName) {
+  if (spreadsheet.getSheetByName(sheetName)) {
+    return;
+  }
+  spreadsheet.insertSheet(sheetName);
+}
+
+function readSheetSnapshot_(sheetName) {
+  const sheet = getSheetOrThrow_(sheetName);
+  const values = sheet.getDataRange().getValues();
+  const headers = values.length ? values[0].map((cell) => normalizeText_(cell)) : [];
+  const indices = {};
+  headers.forEach((header, idx) => {
+    if (!header) {
+      return;
+    }
+    indices[header] = idx;
+  });
+
+  const rows = values
+    .slice(1)
+    .filter((row) => row.some((cell) => cell !== '' && cell !== null));
+  return { sheet, headers, indices, rows };
+}
+
+function buildIdToNameMap_(snapshot, idHeader, nameHeader) {
+  const map = {};
+  snapshot.rows.forEach((row) => {
+    const idValue = normalizeText_(getValueByHeader_(row, snapshot.indices, idHeader));
+    const nameValue = normalizeText_(getValueByHeader_(row, snapshot.indices, nameHeader));
+    if (idValue) {
+      map[idValue] = nameValue || idValue;
+    }
+    if (nameValue) {
+      map[nameValue] = nameValue;
+    }
+  });
+  return map;
+}
+
+function getNamedValue_(row, indices, primaryHeader, secondaryHeader, fallback) {
+  const primaryValue = getValueByHeader_(row, indices, primaryHeader);
+  if (primaryValue !== '' && primaryValue !== null && typeof primaryValue !== 'undefined') {
+    return primaryValue;
+  }
+  if (secondaryHeader) {
+    const secondaryValue = getValueByHeader_(row, indices, secondaryHeader);
+    if (
+      secondaryValue !== '' &&
+      secondaryValue !== null &&
+      typeof secondaryValue !== 'undefined'
+    ) {
+      return secondaryValue;
+    }
+  }
+  return typeof fallback === 'undefined' ? '' : fallback;
+}
+
+function getResolvedNameValue_(row, indices, primaryHeader, legacyIdHeader, idToNameMap) {
+  const directValue = normalizeText_(getValueByHeader_(row, indices, primaryHeader));
+  if (directValue) {
+    return directValue;
+  }
+  const legacyIdValue = normalizeText_(getValueByHeader_(row, indices, legacyIdHeader));
+  if (!legacyIdValue) {
+    return '';
+  }
+  return idToNameMap[legacyIdValue] || legacyIdValue;
+}
+
+function getValueByHeader_(row, indices, headerName) {
+  const idx = indices[headerName];
+  if (typeof idx === 'undefined') {
+    return '';
+  }
+  return row[idx];
+}
+
+function writeMigratedSheet_(sheet, headers, rows) {
+  if (sheet.getMaxColumns() < headers.length) {
+    sheet.insertColumnsAfter(sheet.getMaxColumns(), headers.length - sheet.getMaxColumns());
+  }
+  sheet.clearContents();
+  sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+  if (rows.length > 0) {
+    sheet.getRange(2, 1, rows.length, headers.length).setValues(rows);
+  }
 }
 
 function migrateLegacySheetNames_(spreadsheet) {

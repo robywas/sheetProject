@@ -11,24 +11,23 @@ const SHEET_NAMES = Object.freeze({
 
 const HEADERS = Object.freeze({
   PROCEDURES: [
-    'procedure_id',
     'procedura',
     'opis',
     'dzien_miesiaca',
     'dni_ostrzezenia',
     'aktywna',
   ],
-  CLIENTS: ['client_id', 'klient', 'aktywny'],
-  EMPLOYEES: ['employee_id', 'pracownik', 'email', 'rola', 'aktywny'],
+  CLIENTS: ['klient', 'aktywny'],
+  EMPLOYEES: ['pracownik', 'email', 'rola', 'aktywny'],
   CLIENT_PROCEDURES: [
-    'client_id',
-    'procedure_id',
+    'klient',
+    'procedura',
     'data_start',
     'aktywna',
   ],
   ASSIGNMENTS: [
-    'client_id',
-    'employee_id',
+    'klient',
+    'pracownik',
     'data_od',
     'data_do',
     'aktywna',
@@ -36,9 +35,9 @@ const HEADERS = Object.freeze({
   ],
   TASKS: [
     'task_id',
-    'client_id',
-    'procedure_id',
-    'employee_id',
+    'klient',
+    'procedura',
+    'pracownik',
     'due_date',
     'status',
     'created_at',

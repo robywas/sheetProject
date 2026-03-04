@@ -8,13 +8,13 @@ function refreshMyTasksView() {
 
   const taskRows = getObjectRows_(SHEET_NAMES.TASKS);
   const openTasks = taskRows
-    .filter((row) => normalizeText_(row.employee_id) === employee.employeeId)
+    .filter((row) => normalizeText_(row.pracownik) === employee.employeeName)
     .filter((row) => normalizeText_(row.status) !== STATUS.DONE)
     .map((row) => {
       return {
         taskId: normalizeText_(row.task_id),
-        clientId: normalizeText_(row.client_id),
-        procedureId: normalizeText_(row.procedure_id),
+        clientName: normalizeText_(row.klient),
+        procedureName: normalizeText_(row.procedura),
         dueDate: toDate_(row.due_date),
         status: normalizeText_(row.status) || STATUS.NEW,
         note: row.notes || '',
@@ -22,17 +22,6 @@ function refreshMyTasksView() {
     })
     .filter((task) => task.taskId && task.dueDate)
     .sort((left, right) => left.dueDate - right.dueDate);
-
-  const clientNames = getLookupMap_(
-    getObjectRows_(SHEET_NAMES.CLIENTS),
-    'client_id',
-    'klient'
-  );
-  const procedureNames = getLookupMap_(
-    getObjectRows_(SHEET_NAMES.PROCEDURES),
-    'procedure_id',
-    'procedura'
-  );
 
   const myTasksSheet = getSheetOrThrow_(SHEET_NAMES.MY_TASKS);
   myTasksSheet.getRange(1, 1, 1, HEADERS.MY_TASKS.length).setValues([HEADERS.MY_TASKS]);
@@ -47,8 +36,8 @@ function refreshMyTasksView() {
     false,
     task.taskId,
     task.dueDate,
-    clientNames[task.clientId] || task.clientId,
-    procedureNames[task.procedureId] || task.procedureId,
+    task.clientName,
+    task.procedureName,
     task.status,
     task.note,
   ]);
@@ -87,19 +76,19 @@ function refreshManagerDashboard() {
   );
 
   const filters = readManagerFilters_(dashboardSheet);
-  const selectedEmployeeId =
+  const selectedEmployeeName =
     filters.employeeName === MANAGER_FILTER.ALL_EMPLOYEES
       ? ''
-      : employeeLookups.byName[filters.employeeName] || '';
+      : employeeLookups.byName[filters.employeeName] || filters.employeeName;
 
   const tasks = getObjectRows_(SHEET_NAMES.TASKS).map((row) => {
     const dueDate = toDate_(row.due_date);
     const completedAt = toDate_(row.completed_at);
     return {
       taskId: normalizeText_(row.task_id),
-      clientId: normalizeText_(row.client_id),
-      procedureId: normalizeText_(row.procedure_id),
-      employeeId: normalizeText_(row.employee_id),
+      clientName: normalizeText_(row.klient),
+      procedureName: normalizeText_(row.procedura),
+      employeeName: normalizeText_(row.pracownik),
       dueDate,
       status: normalizeText_(row.status) || STATUS.NEW,
       completedAt,
@@ -108,7 +97,7 @@ function refreshManagerDashboard() {
 
   const tasksInScope = tasks
     .filter((task) =>
-      selectedEmployeeId ? task.employeeId === selectedEmployeeId : true
+      selectedEmployeeName ? task.employeeName === selectedEmployeeName : true
     )
     .filter((task) => matchesManagerStatusFilter_(task, filters.status));
 
@@ -172,18 +161,6 @@ function refreshManagerDashboard() {
     .setFontWeight('bold')
     .setBackground('#f1f3f4');
 
-  const clientNames = getLookupMap_(
-    getObjectRows_(SHEET_NAMES.CLIENTS),
-    'client_id',
-    'klient'
-  );
-  const procedureNames = getLookupMap_(
-    getObjectRows_(SHEET_NAMES.PROCEDURES),
-    'procedure_id',
-    'procedura'
-  );
-  const employeeNames = getLookupMap_(employeeRows, 'employee_id', 'pracownik');
-
   const riskTasks = openTasks
     .filter((task) => task.dueDate && task.dueDate <= riskThreshold)
     .sort((left, right) => left.dueDate - right.dueDate)
@@ -192,9 +169,9 @@ function refreshManagerDashboard() {
       return [
         task.taskId,
         task.dueDate,
-        clientNames[task.clientId] || task.clientId,
-        procedureNames[task.procedureId] || task.procedureId,
-        employeeNames[task.employeeId] || task.employeeId || '(nieprzypisane)',
+        task.clientName || '(brak klienta)',
+        task.procedureName || '(brak procedury)',
+        task.employeeName || '(nieprzypisane)',
         task.status,
         daysDiff,
       ];
@@ -236,7 +213,7 @@ function refreshManagerDashboard() {
 
   const employeeLoad = {};
   openTasks.forEach((task) => {
-    const key = task.employeeId || 'NIEPRZYPISANE';
+    const key = task.employeeName || 'NIEPRZYPISANE';
     if (!employeeLoad[key]) {
       employeeLoad[key] = { open: 0, overdue: 0, dueSoon: 0 };
     }
@@ -263,11 +240,11 @@ function refreshManagerDashboard() {
 
   const loadRows = Object.keys(employeeLoad)
     .sort()
-    .map((employeeId) => [
-      employeeNames[employeeId] || employeeId,
-      employeeLoad[employeeId].open,
-      employeeLoad[employeeId].overdue,
-      employeeLoad[employeeId].dueSoon,
+    .map((employeeName) => [
+      employeeName,
+      employeeLoad[employeeName].open,
+      employeeLoad[employeeName].overdue,
+      employeeLoad[employeeName].dueSoon,
     ]);
 
   if (loadRows.length > 0) {
@@ -291,7 +268,7 @@ function refreshManagerDashboard() {
 
   const clientLoadMap = {};
   openTasks.forEach((task) => {
-    const key = task.clientId || 'NIEPRZYPISANY';
+    const key = task.clientName || 'NIEPRZYPISANY';
     if (!clientLoadMap[key]) {
       clientLoadMap[key] = { open: 0, overdue: 0, dueSoon: 0 };
     }
@@ -306,11 +283,11 @@ function refreshManagerDashboard() {
 
   const clientLoadRows = Object.keys(clientLoadMap)
     .sort()
-    .map((clientId) => [
-      clientNames[clientId] || clientId,
-      clientLoadMap[clientId].open,
-      clientLoadMap[clientId].overdue,
-      clientLoadMap[clientId].dueSoon,
+    .map((clientName) => [
+      clientName,
+      clientLoadMap[clientName].open,
+      clientLoadMap[clientName].overdue,
+      clientLoadMap[clientName].dueSoon,
     ]);
 
   if (clientLoadRows.length > 0) {
@@ -419,13 +396,12 @@ function buildManagerEmployeeLookups_(employeeRows) {
   const names = [];
 
   employeeRows.forEach((row) => {
-    const employeeId = normalizeText_(row.employee_id);
-    const employeeName = normalizeText_(row.pracownik) || employeeId;
-    if (!employeeId || !employeeName) {
+    const employeeName = normalizeText_(row.pracownik);
+    if (!employeeName) {
       return;
     }
     names.push(employeeName);
-    byName[employeeName] = employeeId;
+    byName[employeeName] = employeeName;
   });
 
   names.sort();
@@ -500,8 +476,7 @@ function resolveCurrentEmployee_() {
   }
 
   return {
-    employeeId: normalizeText_(matched.employee_id),
-    name: normalizeText_(matched.pracownik),
+    employeeName: normalizeText_(matched.pracownik),
     email,
     role: normalizeText_(matched.rola),
   };
@@ -526,7 +501,7 @@ function getWorkerSummary() {
   soonDate.setDate(soonDate.getDate() + MANAGER_FILTER.DEFAULT_HORIZON_DAYS);
 
   const tasks = getObjectRows_(SHEET_NAMES.TASKS)
-    .filter((row) => normalizeText_(row.employee_id) === employee.employeeId)
+    .filter((row) => normalizeText_(row.pracownik) === employee.employeeName)
     .filter((row) => normalizeText_(row.status) !== STATUS.DONE)
     .map((row) => ({
       dueDate: toDate_(row.due_date),
@@ -540,7 +515,7 @@ function getWorkerSummary() {
 
   return {
     email: employee.email,
-    employeeName: employee.name || employee.employeeId,
+    employeeName: employee.employeeName,
     openTasks: tasks.length,
     overdueTasks,
     dueSoonTasks,

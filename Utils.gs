@@ -83,8 +83,12 @@ function formatDateKey_(date) {
   );
 }
 
-function buildTaskKey_(clientId, procedureId, dueDate) {
-  return [normalizeText_(clientId), normalizeText_(procedureId), formatDateKey_(dueDate)].join('|');
+function buildTaskKey_(clientName, procedureName, dueDate) {
+  return [
+    normalizeText_(clientName),
+    normalizeText_(procedureName),
+    formatDateKey_(dueDate),
+  ].join('|');
 }
 
 function getCurrentUserEmail_() {
