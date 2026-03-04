@@ -36,9 +36,12 @@ Po uruchomieniu `setupWorkbook()` skrypt zaklada:
 - `generateTasks30Days()`  
   Generuje zadania cykliczne na 30 dni do przodu:
   - uwzglednia relacje klient-procedura z arkusza `Klienci_Procedury`,
-  - uwzglednia `dzien_miesiaca` procedury (`1..31` lub `OSTATNI`),
+  - uwzglednia tryb procedury:
+    - `MIESIECZNY` + `dzien_miesiaca` (`1..31` lub `OSTATNI`) + `interwal` (np. `3`, `6`),
+    - `DZIENNY` + `interwal` (np. `1` codziennie, `2` co 2 dni),
   - przypisuje pracownika wg zakladki `Przypisania` (z rotacja wg `kolejnosc`),
-  - nie duplikuje zadan (klucz: `klient|procedura|due_date`).
+  - nie duplikuje zadan (klucz: `klient|procedura|due_date`),
+  - po zapisie sortuje `Zadania` po `due_date` malejaco.
 
 - `refreshMyTasksView()`  
   Odswieza widok pracownika:
@@ -58,7 +61,7 @@ Po uruchomieniu `setupWorkbook()` skrypt zaklada:
 - `onEdit(e)`  
   Gdy pracownik zmieni status w `Moje_zadania`:
   - status `WYKONANE` zamyka zadanie,
-  - automatycznie tworzy sie kolejne zadanie (nastepny miesiac),
+  - automatycznie tworzy sie kolejne zadanie wg trybu i interwalu procedury,
   - nowe zadanie jest przypisywane do kolejnego pracownika z puli klienta.
 
 ## 3) Interfejsy
@@ -102,7 +105,10 @@ Panele boczne:
 ## 5) Ustawienia produkcyjne (zalecane)
 
 1. W `Pracownicy` uzupelnij poprawne emaile kont Google.
-2. W `Procedury` ustaw `dzien_miesiaca` jako liczbe `1..31` lub `OSTATNI`.
+2. W `Procedury` ustaw:
+   - `tryb_harmonogramu`: `MIESIECZNY` albo `DZIENNY`,
+   - `interwal`: liczba >= 1 (np. 3 = co 3 miesiace / co 3 dni),
+   - `dzien_miesiaca`: wymagany dla trybu miesiecznego (`1..31` lub `OSTATNI`).
 3. W `Przypisania` utrzymuj zakresy dat przypisania klienta do pracownika
    i `kolejnosc` do sterowania rotacja.
 4. Po dodaniu klienta powiaz go recznie z procedurami w `Klienci_Procedury`.
@@ -113,12 +119,14 @@ Panele boczne:
 
 Po `setupWorkbook()` skrypt ustawia:
 
-- `Procedury!dzien_miesiaca` - dropdown `1..31` + `OSTATNI`,
+- `Procedury!dzien_miesiaca` - dropdown puste/`1..31`/`OSTATNI`,
 - `Procedury!dni_ostrzezenia` - liczba calkowita >= 0,
+- `Procedury!tryb_harmonogramu` - dropdown `MIESIECZNY` / `DZIENNY`,
+- `Procedury!interwal` - liczba calkowita >= 1,
 - `Przypisania!kolejnosc` - liczba calkowita >= 1,
 - walidacje nazw `klient`, `procedura`, `pracownik` na podstawie slownikow,
 - dodatkowa kontrola przy edycji (onEdit), ktora czyści nieprawidlowe liczby niecalkowite
-  w `dni_ostrzezenia` i `kolejnosc`.
+  w `dni_ostrzezenia`, `interwal` i `kolejnosc`.
 
 Arkusze startuja od niewielkiej liczby wierszy (ok. 10 + naglowek), a skrypt
 powieksza je automatycznie w miare potrzeb.

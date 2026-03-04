@@ -15,6 +15,8 @@ const HEADERS = Object.freeze({
     'opis',
     'dzien_miesiaca',
     'dni_ostrzezenia',
+    'tryb_harmonogramu',
+    'interwal',
   ],
   CLIENTS: ['klient'],
   EMPLOYEES: ['pracownik', 'email', 'rola'],
@@ -57,6 +59,11 @@ const STATUS = Object.freeze({
   NEW: 'NOWE',
   IN_PROGRESS: 'W_TRAKCIE',
   DONE: 'WYKONANE',
+});
+
+const SCHEDULE_MODE = Object.freeze({
+  MONTHLY: 'MIESIECZNY',
+  DAILY: 'DZIENNY',
 });
 
 const MANAGER_FILTER = Object.freeze({

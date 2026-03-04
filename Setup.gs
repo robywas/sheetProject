@@ -43,6 +43,11 @@ function setupWorkbook() {
   applyDataHints_();
   applyDataValidation_();
   try {
+    sortTasksByDueDateDesc_();
+  } catch (error) {
+    // Sortowanie zadan nie powinno blokowac setupu.
+  }
+  try {
     refreshManagerDashboard();
   } catch (error) {
     // Dashboard moze byc odswiezony pozniej z menu.
@@ -64,9 +69,30 @@ function seedSampleData() {
   const assignmentsSheet = getSheetOrThrow_(SHEET_NAMES.ASSIGNMENTS);
 
   appendRowsIfOnlyHeader_(proceduresSheet, [
-    ['Kontrola cisnienia', 'Pomiar i zapis wyniku', 10, 2],
-    ['Kontrola glikemii', 'Pobranie i wpisanie wyniku', SCHEDULE_LAST_DAY_TOKEN, 1],
-    ['Ocena rany', 'Kontrola i dokumentacja', 15, 3],
+    [
+      'Kontrola cisnienia',
+      'Pomiar i zapis wyniku',
+      10,
+      2,
+      SCHEDULE_MODE.MONTHLY,
+      1,
+    ],
+    [
+      'Kontrola glikemii',
+      'Pobranie i wpisanie wyniku',
+      SCHEDULE_LAST_DAY_TOKEN,
+      1,
+      SCHEDULE_MODE.MONTHLY,
+      1,
+    ],
+    [
+      'Ocena rany',
+      'Kontrola i dokumentacja',
+      15,
+      3,
+      SCHEDULE_MODE.MONTHLY,
+      1,
+    ],
   ]);
 
   appendRowsIfOnlyHeader_(clientsSheet, [
@@ -146,7 +172,17 @@ function applyFormatting_() {
 function applyDataHints_() {
   const proceduresSheet = getSheetOrThrow_(SHEET_NAMES.PROCEDURES);
   proceduresSheet.getRange('C1').setNote(
-    'Podaj dzien miesiaca: 1..31 lub "' + SCHEDULE_LAST_DAY_TOKEN + '".'
+    'Dla trybu miesiecznego podaj dzien: 1..31 lub "' + SCHEDULE_LAST_DAY_TOKEN + '".'
+  );
+  proceduresSheet.getRange('E1').setNote(
+    'Tryb harmonogramu: ' +
+      SCHEDULE_MODE.MONTHLY +
+      ' (do dnia miesiaca) lub ' +
+      SCHEDULE_MODE.DAILY +
+      ' (co N dni).'
+  );
+  proceduresSheet.getRange('F1').setNote(
+    'Interwal: dla trybu miesiecznego = co ile miesiecy, dla dziennego = co ile dni.'
   );
 }
 
@@ -163,7 +199,7 @@ function applyDataValidation_() {
   const clientProcedureRows = clientProceduresSheet.getMaxRows() - 1;
   const assignmentRows = assignmentsSheet.getMaxRows() - 1;
 
-  const monthDayOptions = [];
+  const monthDayOptions = [''];
   for (let day = 1; day <= 31; day += 1) {
     monthDayOptions.push(String(day));
   }
@@ -172,7 +208,7 @@ function applyDataValidation_() {
   const monthDayRule = SpreadsheetApp.newDataValidation()
     .requireValueInList(monthDayOptions, true)
     .setAllowInvalid(false)
-    .setHelpText('Dozwolone: 1..31 lub OSTATNI.')
+    .setHelpText('Dla trybu miesiecznego: 1..31 lub OSTATNI. Dla dziennego moze byc puste.')
     .build();
   proceduresSheet.getRange(2, 3, procedureRows, 1).setDataValidation(monthDayRule);
 
@@ -183,11 +219,19 @@ function applyDataValidation_() {
     .build();
   proceduresSheet.getRange(2, 4, procedureRows, 1).setDataValidation(nonNegativeIntegerRule);
 
+  const scheduleModeRule = SpreadsheetApp.newDataValidation()
+    .requireValueInList([SCHEDULE_MODE.MONTHLY, SCHEDULE_MODE.DAILY], true)
+    .setAllowInvalid(false)
+    .setHelpText('Dozwolone: MIESIECZNY albo DZIENNY.')
+    .build();
+  proceduresSheet.getRange(2, 5, procedureRows, 1).setDataValidation(scheduleModeRule);
+
   const positiveIntegerRule = SpreadsheetApp.newDataValidation()
     .requireNumberGreaterThanOrEqualTo(1)
     .setAllowInvalid(false)
     .setHelpText('Podaj liczbe >= 1.')
     .build();
+  proceduresSheet.getRange(2, 6, procedureRows, 1).setDataValidation(positiveIntegerRule);
   assignmentsSheet.getRange(2, 5, assignmentRows, 1).setDataValidation(positiveIntegerRule);
 
   const clientNameRange = clientsSheet.getRange(2, 1, clientRows, 1);
@@ -243,8 +287,24 @@ function migrateIdBasedModelToNameModel_() {
       return [
         getNamedValue_(row, proceduresSnapshot.indices, 'procedura', 'procedure_id'),
         getNamedValue_(row, proceduresSnapshot.indices, 'opis'),
-        getNamedValue_(row, proceduresSnapshot.indices, 'dzien_miesiaca'),
+        getNamedValue_(row, proceduresSnapshot.indices, 'dzien_miesiaca', '', 1),
         getNamedValue_(row, proceduresSnapshot.indices, 'dni_ostrzezenia'),
+        normalizeText_(
+          getNamedValue_(
+            row,
+            proceduresSnapshot.indices,
+            'tryb_harmonogramu',
+            '',
+            SCHEDULE_MODE.MONTHLY
+          )
+        ).toUpperCase() || SCHEDULE_MODE.MONTHLY,
+        Math.max(
+          1,
+          toNumber_(
+            getNamedValue_(row, proceduresSnapshot.indices, 'interwal', '', 1),
+            1
+          )
+        ),
       ];
     })
     .filter(Boolean)

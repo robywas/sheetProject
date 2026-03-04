@@ -130,24 +130,21 @@ function generateRecurringTasks(daysAhead) {
       return;
     }
 
-    const pairKey = clientLookupKey + '|' + procedureLookupKey;
+    const pairKey =
+      normalizeLookupKey_(clientName) +
+      '|' +
+      normalizeLookupKey_(procedureName);
     let previousEmployeeName = lastTaskByPair[pairKey]
       ? normalizeText_(lastTaskByPair[pairKey].employeeName)
       : '';
 
-    const months = getMonthStartsBetween_(windowStart, horizon);
-    months.forEach((monthStart) => {
-      const normalizedDueDate = getDueDateForMonth_(
-        monthStart.getFullYear(),
-        monthStart.getMonth(),
-        procedure.schedule
-      );
-      if (!normalizedDueDate) {
-        return;
-      }
-      if (normalizedDueDate < windowStart || normalizedDueDate > horizon) {
-        return;
-      }
+    const dueDates = listScheduledDueDatesForWindow_(
+      windowStart,
+      horizon,
+      relationStartDate,
+      procedure
+    );
+    dueDates.forEach((normalizedDueDate) => {
 
       const taskKey = buildTaskKey_(clientName, procedureName, normalizedDueDate);
       if (existingKeys.has(taskKey)) {
@@ -218,6 +215,10 @@ function generateRecurringTasks(daysAhead) {
     });
   }
 
+  if (newRows.length > 0 || reassignmentUpdates.length > 0) {
+    sortTasksByDueDateDesc_();
+  }
+
   return {
     createdCount: newRows.length,
     reassignedCount: reassignmentUpdates.length,
@@ -257,6 +258,7 @@ function markTaskAsDone_(taskId) {
 
   sheet.getRange(row, 6).setValue(STATUS.DONE);
   sheet.getRange(row, 8).setValue(new Date());
+  sortTasksByDueDateDesc_();
   return completedTask;
 }
 
@@ -303,6 +305,7 @@ function updateTaskStatus_(taskId, newStatus) {
   } else {
     sheet.getRange(rowNumber, 8).clearContent();
   }
+  sortTasksByDueDateDesc_();
   return true;
 }
 
@@ -411,18 +414,132 @@ function buildProcedureConfigs_(procedureRows) {
       return;
     }
 
+    const rawMode = normalizeText_(row.tryb_harmonogramu).toUpperCase();
+    const scheduleMode =
+      rawMode === SCHEDULE_MODE.DAILY
+        ? SCHEDULE_MODE.DAILY
+        : SCHEDULE_MODE.MONTHLY;
+    const interval = Math.max(1, toNumber_(row.interwal, 1));
     const schedule = parseScheduleDay_(row.dzien_miesiaca);
-    if (!schedule) {
+    if (scheduleMode === SCHEDULE_MODE.MONTHLY && !schedule) {
       return;
     }
 
     map[normalizeLookupKey_(procedureName)] = {
       procedureName,
+      scheduleMode,
+      interval,
       schedule,
       warningDays: Math.max(0, toNumber_(row.dni_ostrzezenia, 2)),
     };
   });
   return map;
+}
+
+function listScheduledDueDatesForWindow_(
+  windowStart,
+  horizon,
+  relationStartDate,
+  procedureConfig
+) {
+  if (!procedureConfig) {
+    return [];
+  }
+
+  const normalizedWindowStart = normalizeDate_(windowStart);
+  const normalizedHorizon = normalizeDate_(horizon);
+  const normalizedRelationStart = normalizeDate_(relationStartDate);
+  if (normalizedWindowStart > normalizedHorizon) {
+    return [];
+  }
+
+  if (procedureConfig.scheduleMode === SCHEDULE_MODE.DAILY) {
+    return getDailyDueDatesBetween_(
+      normalizedWindowStart,
+      normalizedHorizon,
+      normalizedRelationStart,
+      procedureConfig.interval
+    );
+  }
+
+  return getMonthlyDueDatesBetween_(
+    normalizedWindowStart,
+    normalizedHorizon,
+    normalizedRelationStart,
+    procedureConfig.schedule,
+    procedureConfig.interval
+  );
+}
+
+function getMonthlyDueDatesBetween_(
+  windowStart,
+  horizon,
+  relationStartDate,
+  schedule,
+  intervalMonths
+) {
+  if (!schedule) {
+    return [];
+  }
+
+  const safeInterval = Math.max(1, toNumber_(intervalMonths, 1));
+  const anchorMonthStart = getFirstDayOfMonth_(relationStartDate);
+  const monthStarts = getMonthStartsBetween_(windowStart, horizon);
+  const dueDates = [];
+
+  monthStarts.forEach((monthStart) => {
+    if (monthStart < anchorMonthStart) {
+      return;
+    }
+
+    const monthsDiff =
+      (monthStart.getFullYear() - anchorMonthStart.getFullYear()) * 12 +
+      (monthStart.getMonth() - anchorMonthStart.getMonth());
+    if (monthsDiff % safeInterval !== 0) {
+      return;
+    }
+
+    const dueDate = getDueDateForMonth_(
+      monthStart.getFullYear(),
+      monthStart.getMonth(),
+      schedule
+    );
+    if (!dueDate || dueDate < relationStartDate || dueDate < windowStart || dueDate > horizon) {
+      return;
+    }
+    dueDates.push(dueDate);
+  });
+
+  return dueDates;
+}
+
+function getDailyDueDatesBetween_(windowStart, horizon, relationStartDate, intervalDays) {
+  const safeInterval = Math.max(1, toNumber_(intervalDays, 1));
+  const dueDates = [];
+  if (relationStartDate > horizon) {
+    return dueDates;
+  }
+
+  let firstDueDate = new Date(relationStartDate.getTime());
+  if (firstDueDate < windowStart) {
+    const daysDiff = Math.floor((windowStart.getTime() - firstDueDate.getTime()) / ONE_DAY_MS);
+    const steps = Math.ceil(daysDiff / safeInterval);
+    firstDueDate = new Date(firstDueDate.getTime());
+    firstDueDate.setDate(firstDueDate.getDate() + steps * safeInterval);
+    firstDueDate = normalizeDate_(firstDueDate);
+  }
+
+  for (
+    let cursor = new Date(firstDueDate.getTime());
+    cursor <= horizon;
+    cursor = new Date(cursor.getFullYear(), cursor.getMonth(), cursor.getDate() + safeInterval)
+  ) {
+    if (cursor >= windowStart) {
+      dueDates.push(normalizeDate_(cursor));
+    }
+  }
+
+  return dueDates;
 }
 
 function createNextTaskFromCompleted_(completedTask) {
@@ -442,9 +559,9 @@ function createNextTaskFromCompleted_(completedTask) {
     return false;
   }
 
-  const nextDueDate = getNextMonthlyDueDate_(
+  const nextDueDate = getNextDueDateForProcedure_(
     completedTask.dueDate,
-    procedureConfig.schedule
+    procedureConfig
   );
   if (!nextDueDate) {
     return false;
@@ -514,7 +631,54 @@ function createNextTaskFromCompleted_(completedTask) {
   taskSheet
     .getRange(taskSheet.getLastRow() + 1, 1, 1, HEADERS.TASKS.length)
     .setValues([row]);
+  sortTasksByDueDateDesc_();
   return true;
+}
+
+function getNextDueDateForProcedure_(dueDate, procedureConfig) {
+  if (!procedureConfig) {
+    return null;
+  }
+
+  const normalizedDueDate = normalizeDate_(dueDate);
+  const safeInterval = Math.max(1, toNumber_(procedureConfig.interval, 1));
+
+  if (procedureConfig.scheduleMode === SCHEDULE_MODE.DAILY) {
+    const nextDailyDate = new Date(normalizedDueDate.getTime());
+    nextDailyDate.setDate(nextDailyDate.getDate() + safeInterval);
+    return normalizeDate_(nextDailyDate);
+  }
+
+  if (!procedureConfig.schedule) {
+    return null;
+  }
+
+  const nextMonth = new Date(
+    normalizedDueDate.getFullYear(),
+    normalizedDueDate.getMonth() + safeInterval,
+    1
+  );
+  return getDueDateForMonth_(
+    nextMonth.getFullYear(),
+    nextMonth.getMonth(),
+    procedureConfig.schedule
+  );
+}
+
+function sortTasksByDueDateDesc_() {
+  const taskSheet = getSheetOrThrow_(SHEET_NAMES.TASKS);
+  const lastRow = taskSheet.getLastRow();
+  if (lastRow < 3) {
+    return;
+  }
+
+  taskSheet
+    .getRange(2, 1, lastRow - 1, HEADERS.TASKS.length)
+    .sort([
+      { column: 5, ascending: false },
+      { column: 7, ascending: false },
+      { column: 1, ascending: true },
+    ]);
 }
 
 function buildNameMapByKey_(rows, fieldCandidates) {
@@ -545,7 +709,17 @@ function onEdit(e) {
     return;
   }
 
-  if (sheet.getName() !== SHEET_NAMES.MY_TASKS || e.range.getRow() === 1) {
+  const editedSheetName = sheet.getName();
+  if (
+    editedSheetName === SHEET_NAMES.TASKS &&
+    e.range.getRow() > 1 &&
+    e.range.getColumn() === 5
+  ) {
+    sortTasksByDueDateDesc_();
+    return;
+  }
+
+  if (editedSheetName !== SHEET_NAMES.MY_TASKS || e.range.getRow() === 1) {
     return;
   }
 
@@ -601,6 +775,10 @@ function enforceMasterDataIntegerRulesOnEdit_(sheet, range) {
 
   if (sheetName === SHEET_NAMES.PROCEDURES && col === 4) {
     return validateIntegerCell_(range, value, 0, 'W kolumnie dni_ostrzezenia wpisz liczbe calkowita >= 0.');
+  }
+
+  if (sheetName === SHEET_NAMES.PROCEDURES && col === 6) {
+    return validateIntegerCell_(range, value, 1, 'W kolumnie interwal wpisz liczbe calkowita >= 1.');
   }
 
   if (sheetName === SHEET_NAMES.ASSIGNMENTS && col === 5) {
