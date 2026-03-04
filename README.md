@@ -35,7 +35,7 @@ Po uruchomieniu `setupWorkbook()` skrypt zaklada:
 
 - `generateTasks30Days()`  
   Generuje zadania cykliczne na 30 dni do przodu:
-  - uwzglednia aktywne relacje klient-procedura,
+  - uwzglednia relacje klient-procedura z arkusza `Klienci_Procedury`,
   - uwzglednia `dzien_miesiaca` procedury (`1..31` lub `OSTATNI`),
   - przypisuje pracownika wg zakladki `Przypisania` (z rotacja wg `kolejnosc`),
   - nie duplikuje zadan (klucz: `klient|procedura|due_date`).
@@ -116,9 +116,11 @@ Po `setupWorkbook()` skrypt ustawia:
 - `Procedury!dni_ostrzezenia` - liczba calkowita >= 0,
 - `Przypisania!kolejnosc` - liczba calkowita >= 1,
 - walidacje nazw `klient`, `procedura`, `pracownik` na podstawie slownikow,
-- checkboxy dla kolumn aktywnosci,
 - dodatkowa kontrola przy edycji (onEdit), ktora czyści nieprawidlowe liczby niecalkowite
   w `dni_ostrzezenia` i `kolejnosc`.
+
+Arkusze startuja od niewielkiej liczby wierszy (ok. 10 + naglowek), a skrypt
+powieksza je automatycznie w miare potrzeb.
 
 ## 7) Rozszerzenia, ktore latwo dodac
 

@@ -109,6 +109,21 @@ function clearSheetBody_(sheet, maxColumns) {
   sheet.getRange(2, 1, lastRow - 1, maxColumns).clearContent().clearFormat();
 }
 
+function ensureSheetSize_(sheet, requiredRows, requiredColumns) {
+  const minRows = Math.max(1, toNumber_(requiredRows, 1));
+  const minColumns = Math.max(1, toNumber_(requiredColumns, 1));
+
+  const currentRows = sheet.getMaxRows();
+  if (currentRows < minRows) {
+    sheet.insertRowsAfter(currentRows, minRows - currentRows);
+  }
+
+  const currentColumns = sheet.getMaxColumns();
+  if (currentColumns < minColumns) {
+    sheet.insertColumnsAfter(currentColumns, minColumns - currentColumns);
+  }
+}
+
 function getLookupMap_(rows, keyField, valueField) {
   const map = {};
   rows.forEach((row) => {

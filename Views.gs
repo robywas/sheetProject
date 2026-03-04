@@ -46,6 +46,7 @@ function refreshMyTasksView() {
     task.note,
   ]);
 
+  ensureSheetSize_(myTasksSheet, rows.length + 1, HEADERS.MY_TASKS.length);
   myTasksSheet
     .getRange(2, 1, rows.length, HEADERS.MY_TASKS.length)
     .setValues(rows);
@@ -70,7 +71,7 @@ function refreshManagerDashboard() {
   const previousFilters = readManagerFilters_(dashboardSheet);
 
   const employeeRows = getObjectRows_(SHEET_NAMES.EMPLOYEES).filter((row) =>
-    toBoolean_(row.aktywny, true)
+    normalizeText_(row.pracownik || row.employee_id)
   );
   const employeeLookups = buildManagerEmployeeLookups_(employeeRows);
   prepareManagerDashboardLayout_(
@@ -127,6 +128,12 @@ function refreshManagerDashboard() {
   const completionRate = tasksInScope.length
     ? Math.round((completedLast30Days.length / tasksInScope.length) * 100)
     : 0;
+
+  ensureSheetSize_(
+    dashboardSheet,
+    Math.max(DASHBOARD_MIN_ROWS, tasksInScope.length * 2 + 80),
+    7
+  );
 
   dashboardSheet.getRange('A2').setValue(
     'Aktualizacja: ' +
@@ -474,7 +481,7 @@ function resolveCurrentEmployee_() {
   const employees = getObjectRows_(SHEET_NAMES.EMPLOYEES);
   const matched = employees.find(
     (row) =>
-      toBoolean_(row.aktywny, true) &&
+      normalizeText_(row.pracownik || row.employee_id) &&
       normalizeText_(row.email).toLowerCase() === email
   );
 

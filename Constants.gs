@@ -15,15 +15,13 @@ const HEADERS = Object.freeze({
     'opis',
     'dzien_miesiaca',
     'dni_ostrzezenia',
-    'aktywna',
   ],
-  CLIENTS: ['klient', 'aktywny'],
-  EMPLOYEES: ['pracownik', 'email', 'rola', 'aktywny'],
+  CLIENTS: ['klient'],
+  EMPLOYEES: ['pracownik', 'email', 'rola'],
   CLIENT_PROCEDURES: [
     'klient',
     'procedura',
     'data_start',
-    'aktywna',
   ],
   ASSIGNMENTS: [
     'klient',
@@ -84,6 +82,8 @@ const MY_TASKS_COL = Object.freeze({
 const DEFAULT_GENERATION_DAYS = 30;
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 const SCHEDULE_LAST_DAY_TOKEN = 'OSTATNI';
+const DEFAULT_SHEET_MIN_ROWS = 11;
+const DASHBOARD_MIN_ROWS = 120;
 
 const LEGACY_SHEET_NAMES = Object.freeze({
   CLIENTS: 'Pacjenci',

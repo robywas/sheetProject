@@ -9,6 +9,9 @@ function setupWorkbook() {
   ensureSheetExists_(spreadsheet, SHEET_NAMES.TASKS);
   ensureSheetExists_(spreadsheet, SHEET_NAMES.MY_TASKS);
   ensureSheetExists_(spreadsheet, SHEET_NAMES.MANAGER_DASHBOARD);
+  const dashboardSheet = getSheetOrThrow_(SHEET_NAMES.MANAGER_DASHBOARD);
+  ensureSheetSize_(dashboardSheet, DASHBOARD_MIN_ROWS, 7);
+  shrinkSheetToDataBuffer_(dashboardSheet, DASHBOARD_MIN_ROWS, 7);
 
   migrateIdBasedModelToNameModel_();
 
@@ -61,22 +64,22 @@ function seedSampleData() {
   const assignmentsSheet = getSheetOrThrow_(SHEET_NAMES.ASSIGNMENTS);
 
   appendRowsIfOnlyHeader_(proceduresSheet, [
-    ['Kontrola cisnienia', 'Pomiar i zapis wyniku', 10, 2, true],
-    ['Kontrola glikemii', 'Pobranie i wpisanie wyniku', SCHEDULE_LAST_DAY_TOKEN, 1, true],
-    ['Ocena rany', 'Kontrola i dokumentacja', 15, 3, true],
+    ['Kontrola cisnienia', 'Pomiar i zapis wyniku', 10, 2],
+    ['Kontrola glikemii', 'Pobranie i wpisanie wyniku', SCHEDULE_LAST_DAY_TOKEN, 1],
+    ['Ocena rany', 'Kontrola i dokumentacja', 15, 3],
   ]);
 
   appendRowsIfOnlyHeader_(clientsSheet, [
-    ['Jan Kowalski', true],
-    ['Anna Nowak', true],
-    ['Piotr Wisniewski', true],
-    ['Maria Zielinska', true],
+    ['Jan Kowalski'],
+    ['Anna Nowak'],
+    ['Piotr Wisniewski'],
+    ['Maria Zielinska'],
   ]);
 
   appendRowsIfOnlyHeader_(employeesSheet, [
-    ['Agnieszka Opiekun', 'agnieszka.opiekun@example.com', 'pracownik', true],
-    ['Tomasz Opiekun', 'tomasz.opiekun@example.com', 'pracownik', true],
-    ['Monika Manager', 'monika.manager@example.com', 'manager', true],
+    ['Agnieszka Opiekun', 'agnieszka.opiekun@example.com', 'pracownik'],
+    ['Tomasz Opiekun', 'tomasz.opiekun@example.com', 'pracownik'],
+    ['Monika Manager', 'monika.manager@example.com', 'manager'],
   ]);
 
   const today = normalizeDate_(new Date());
@@ -84,11 +87,11 @@ function seedSampleData() {
   startDate.setDate(1);
 
   appendRowsIfOnlyHeader_(clientProceduresSheet, [
-    ['Jan Kowalski', 'Kontrola cisnienia', startDate, true],
-    ['Jan Kowalski', 'Kontrola glikemii', startDate, true],
-    ['Anna Nowak', 'Ocena rany', startDate, true],
-    ['Piotr Wisniewski', 'Kontrola cisnienia', startDate, true],
-    ['Maria Zielinska', 'Kontrola glikemii', startDate, true],
+    ['Jan Kowalski', 'Kontrola cisnienia', startDate],
+    ['Jan Kowalski', 'Kontrola glikemii', startDate],
+    ['Anna Nowak', 'Ocena rany', startDate],
+    ['Piotr Wisniewski', 'Kontrola cisnienia', startDate],
+    ['Maria Zielinska', 'Kontrola glikemii', startDate],
   ]);
 
   appendRowsIfOnlyHeader_(assignmentsSheet, [
@@ -115,14 +118,14 @@ function ensureSheetWithHeader_(spreadsheet, sheetName, headers) {
     sheet = spreadsheet.insertSheet(sheetName);
   }
 
-  if (sheet.getMaxColumns() < headers.length) {
-    sheet.insertColumnsAfter(sheet.getMaxColumns(), headers.length - sheet.getMaxColumns());
-  }
+  ensureSheetSize_(sheet, getDefaultMinRowsForSheet_(sheetName), headers.length);
 
   sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
   sheet.getRange(1, 1, 1, headers.length).setFontWeight('bold');
   sheet.getRange(1, 1, 1, headers.length).setBackground('#f1f3f4');
   sheet.setFrozenRows(1);
+
+  shrinkSheetToDataBuffer_(sheet, getDefaultMinRowsForSheet_(sheetName), headers.length);
 }
 
 function applyFormatting_() {
@@ -214,10 +217,6 @@ function applyDataValidation_() {
   assignmentsSheet.getRange(2, 1, assignmentRows, 1).setDataValidation(clientNameRule);
   assignmentsSheet.getRange(2, 2, assignmentRows, 1).setDataValidation(employeeNameRule);
 
-  proceduresSheet.getRange(2, 5, procedureRows, 1).insertCheckboxes();
-  clientsSheet.getRange(2, 2, clientRows, 1).insertCheckboxes();
-  employeesSheet.getRange(2, 4, employeeRows, 1).insertCheckboxes();
-  clientProceduresSheet.getRange(2, 4, clientProcedureRows, 1).insertCheckboxes();
   assignmentsSheet.getRange(2, 5, assignmentRows, 1).insertCheckboxes();
 }
 
@@ -234,50 +233,84 @@ function migrateIdBasedModelToNameModel_() {
   const employeeIdToName = buildIdToNameMap_(employeesSnapshot, 'employee_id', 'pracownik');
 
   const migratedProcedures = proceduresSnapshot.rows
-    .map((row) => [
-      getNamedValue_(row, proceduresSnapshot.indices, 'procedura', 'procedure_id'),
-      getNamedValue_(row, proceduresSnapshot.indices, 'opis'),
-      getNamedValue_(row, proceduresSnapshot.indices, 'dzien_miesiaca'),
-      getNamedValue_(row, proceduresSnapshot.indices, 'dni_ostrzezenia'),
-      getNamedValue_(row, proceduresSnapshot.indices, 'aktywna', '', true),
-    ])
+    .map((row) => {
+      const isActive = toBoolean_(
+        getNamedValue_(row, proceduresSnapshot.indices, 'aktywna', '', true),
+        true
+      );
+      if (!isActive) {
+        return null;
+      }
+      return [
+        getNamedValue_(row, proceduresSnapshot.indices, 'procedura', 'procedure_id'),
+        getNamedValue_(row, proceduresSnapshot.indices, 'opis'),
+        getNamedValue_(row, proceduresSnapshot.indices, 'dzien_miesiaca'),
+        getNamedValue_(row, proceduresSnapshot.indices, 'dni_ostrzezenia'),
+      ];
+    })
+    .filter(Boolean)
     .filter((row) => normalizeText_(row[0]));
 
   const migratedClients = clientsSnapshot.rows
-    .map((row) => [
-      getNamedValue_(row, clientsSnapshot.indices, 'klient', 'client_id'),
-      getNamedValue_(row, clientsSnapshot.indices, 'aktywny', '', true),
-    ])
+    .map((row) => {
+      const isActive = toBoolean_(
+        getNamedValue_(row, clientsSnapshot.indices, 'aktywny', '', true),
+        true
+      );
+      if (!isActive) {
+        return null;
+      }
+      return [getNamedValue_(row, clientsSnapshot.indices, 'klient', 'client_id')];
+    })
+    .filter(Boolean)
     .filter((row) => normalizeText_(row[0]));
 
   const migratedEmployees = employeesSnapshot.rows
-    .map((row) => [
-      getNamedValue_(row, employeesSnapshot.indices, 'pracownik', 'employee_id'),
-      getNamedValue_(row, employeesSnapshot.indices, 'email'),
-      getNamedValue_(row, employeesSnapshot.indices, 'rola'),
-      getNamedValue_(row, employeesSnapshot.indices, 'aktywny', '', true),
-    ])
+    .map((row) => {
+      const isActive = toBoolean_(
+        getNamedValue_(row, employeesSnapshot.indices, 'aktywny', '', true),
+        true
+      );
+      if (!isActive) {
+        return null;
+      }
+      return [
+        getNamedValue_(row, employeesSnapshot.indices, 'pracownik', 'employee_id'),
+        getNamedValue_(row, employeesSnapshot.indices, 'email'),
+        getNamedValue_(row, employeesSnapshot.indices, 'rola'),
+      ];
+    })
+    .filter(Boolean)
     .filter((row) => normalizeText_(row[0]));
 
   const migratedClientProcedures = clientProceduresSnapshot.rows
-    .map((row) => [
-      getResolvedNameValue_(
-        row,
-        clientProceduresSnapshot.indices,
-        'klient',
-        'client_id',
-        clientIdToName
-      ),
-      getResolvedNameValue_(
-        row,
-        clientProceduresSnapshot.indices,
-        'procedura',
-        'procedure_id',
-        procedureIdToName
-      ),
-      getNamedValue_(row, clientProceduresSnapshot.indices, 'data_start'),
-      getNamedValue_(row, clientProceduresSnapshot.indices, 'aktywna', '', true),
-    ])
+    .map((row) => {
+      const isActive = toBoolean_(
+        getNamedValue_(row, clientProceduresSnapshot.indices, 'aktywna', '', true),
+        true
+      );
+      if (!isActive) {
+        return null;
+      }
+      return [
+        getResolvedNameValue_(
+          row,
+          clientProceduresSnapshot.indices,
+          'klient',
+          'client_id',
+          clientIdToName
+        ),
+        getResolvedNameValue_(
+          row,
+          clientProceduresSnapshot.indices,
+          'procedura',
+          'procedure_id',
+          procedureIdToName
+        ),
+        getNamedValue_(row, clientProceduresSnapshot.indices, 'data_start'),
+      ];
+    })
+    .filter(Boolean)
     .filter((row) => normalizeText_(row[0]) && normalizeText_(row[1]));
 
   const migratedAssignments = assignmentsSnapshot.rows
@@ -436,14 +469,13 @@ function getValueByHeader_(row, indices, headerName) {
 }
 
 function writeMigratedSheet_(sheet, headers, rows) {
-  if (sheet.getMaxColumns() < headers.length) {
-    sheet.insertColumnsAfter(sheet.getMaxColumns(), headers.length - sheet.getMaxColumns());
-  }
-  sheet.clearContents();
+  ensureSheetSize_(sheet, Math.max(DEFAULT_SHEET_MIN_ROWS, rows.length + 1), headers.length);
+  sheet.clear();
   sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
   if (rows.length > 0) {
     sheet.getRange(2, 1, rows.length, headers.length).setValues(rows);
   }
+  shrinkSheetToDataBuffer_(sheet, getDefaultMinRowsForSheet_(sheet.getName()), headers.length);
 }
 
 function migrateLegacySheetNames_(spreadsheet) {
@@ -485,5 +517,27 @@ function appendRowsIfOnlyHeader_(sheet, rows) {
   if (sheet.getLastRow() > 1) {
     return;
   }
+  ensureSheetSize_(sheet, rows.length + 1, rows[0].length);
   sheet.getRange(2, 1, rows.length, rows[0].length).setValues(rows);
+}
+
+function getDefaultMinRowsForSheet_(sheetName) {
+  if (sheetName === SHEET_NAMES.MANAGER_DASHBOARD) {
+    return DASHBOARD_MIN_ROWS;
+  }
+  return DEFAULT_SHEET_MIN_ROWS;
+}
+
+function shrinkSheetToDataBuffer_(sheet, minRows, minColumns) {
+  const targetRows = Math.max(minRows, sheet.getLastRow() + 10);
+  const currentRows = sheet.getMaxRows();
+  if (currentRows > targetRows) {
+    sheet.deleteRows(targetRows + 1, currentRows - targetRows);
+  }
+
+  const targetColumns = Math.max(minColumns, sheet.getLastColumn());
+  const currentColumns = sheet.getMaxColumns();
+  if (currentColumns > targetColumns) {
+    sheet.deleteColumns(targetColumns + 1, currentColumns - targetColumns);
+  }
 }

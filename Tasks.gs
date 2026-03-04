@@ -27,13 +27,13 @@ function generateRecurringTasks(daysAhead) {
 
   const procedures = getObjectRows_(SHEET_NAMES.PROCEDURES);
   const clients = getObjectRows_(SHEET_NAMES.CLIENTS).filter((row) =>
-    toBoolean_(row.aktywny, true)
+    normalizeText_(row.klient)
   );
   const employees = getObjectRows_(SHEET_NAMES.EMPLOYEES).filter((row) =>
-    toBoolean_(row.aktywny, true)
+    normalizeText_(row.pracownik || row.employee_id)
   );
-  const clientProcedures = getObjectRows_(SHEET_NAMES.CLIENT_PROCEDURES).filter((row) =>
-    toBoolean_(row.aktywna, true)
+  const clientProcedures = getObjectRows_(SHEET_NAMES.CLIENT_PROCEDURES).filter(
+    (row) => normalizeText_(row.klient || row.client_id) && normalizeText_(row.procedura || row.procedure_id)
   );
   const assignments = getObjectRows_(SHEET_NAMES.ASSIGNMENTS).filter((row) =>
     toBoolean_(row.aktywna, true)
@@ -186,6 +186,7 @@ function generateRecurringTasks(daysAhead) {
 
   if (newRows.length > 0) {
     const taskSheet = getSheetOrThrow_(SHEET_NAMES.TASKS);
+    ensureSheetSize_(taskSheet, taskSheet.getLastRow() + newRows.length, HEADERS.TASKS.length);
     taskSheet
       .getRange(taskSheet.getLastRow() + 1, 1, newRows.length, HEADERS.TASKS.length)
       .setValues(newRows);
@@ -361,10 +362,6 @@ function getEligibleEmployeeNamesForDate_(clientAssignments, dueDate) {
 function buildProcedureConfigs_(procedureRows) {
   const map = {};
   procedureRows.forEach((row) => {
-    if (!toBoolean_(row.aktywna, true)) {
-      return;
-    }
-
     const procedureName = normalizeText_(row.procedura || row.procedure_id);
     if (!procedureName) {
       return;
@@ -436,10 +433,10 @@ function createNextTaskFromCompleted_(completedTask) {
     toBoolean_(row.aktywna, true)
   );
   const clients = getObjectRows_(SHEET_NAMES.CLIENTS).filter((row) =>
-    toBoolean_(row.aktywny, true)
+    normalizeText_(row.klient)
   );
   const employees = getObjectRows_(SHEET_NAMES.EMPLOYEES).filter((row) =>
-    toBoolean_(row.aktywny, true)
+    normalizeText_(row.pracownik || row.employee_id)
   );
   const assignmentsByClient = buildAssignmentsByClient_(
     assignments,
@@ -467,6 +464,7 @@ function createNextTaskFromCompleted_(completedTask) {
   ];
 
   const taskSheet = getSheetOrThrow_(SHEET_NAMES.TASKS);
+  ensureSheetSize_(taskSheet, taskSheet.getLastRow() + 1, HEADERS.TASKS.length);
   taskSheet
     .getRange(taskSheet.getLastRow() + 1, 1, 1, HEADERS.TASKS.length)
     .setValues([row]);
