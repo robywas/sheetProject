@@ -56,6 +56,7 @@ function generateRecurringTasks(daysAhead) {
   const employeeByTaskKey = {};
   const rowByTaskKey = {};
   const lastTaskByPair = {};
+  const reassignmentUpdates = [];
 
   existingTasks.forEach((row, idx) => {
     const clientRaw = normalizeText_(row.klient || row.client_id);
@@ -68,7 +69,8 @@ function generateRecurringTasks(daysAhead) {
     const procedureName = procedureConfig ? procedureConfig.procedureName : procedureRaw;
 
     const employeeRaw = normalizeText_(row.pracownik || row.employee_id);
-    const employeeName = employeesByKey[normalizeLookupKey_(employeeRaw)] || employeeRaw;
+    let employeeName =
+      employeesByKey[normalizeLookupKey_(employeeRaw)] || employeeRaw;
     const dueDate = toDate_(row.due_date);
     if (!clientName || !procedureName || !dueDate) {
       return;
@@ -78,6 +80,22 @@ function generateRecurringTasks(daysAhead) {
       normalizeText_(row.task_key) ||
       buildTaskKey_(clientName, procedureName, dueDate);
     existingKeys.add(taskKey);
+
+    if (!employeeName) {
+      const filledEmployeeName = pickNextEmployeeForDate_(
+        assignmentsByClient[clientLookupKey] || [],
+        dueDate,
+        ''
+      );
+      if (filledEmployeeName) {
+        employeeName = filledEmployeeName;
+        reassignmentUpdates.push({
+          rowNumber: idx + 2,
+          employeeName: filledEmployeeName,
+        });
+      }
+    }
+
     employeeByTaskKey[taskKey] = employeeName;
     rowByTaskKey[taskKey] = idx + 2;
 
@@ -92,7 +110,6 @@ function generateRecurringTasks(daysAhead) {
   });
 
   const newRows = [];
-  const reassignmentUpdates = [];
   clientProcedures.forEach((relation) => {
     const clientRaw = normalizeText_(relation.klient || relation.client_id);
     const clientLookupKey = normalizeLookupKey_(clientRaw);
@@ -338,11 +355,10 @@ function getEligibleEmployeeNamesForDate_(clientAssignments, dueDate) {
     return startsBeforeOrOn && endsAfterOrOn;
   });
 
-  if (eligibleAssignments.length === 0) {
-    return [];
-  }
+  const sourceAssignments =
+    eligibleAssignments.length > 0 ? eligibleAssignments : clientAssignments;
 
-  const sorted = eligibleAssignments.sort((left, right) => {
+  const sorted = sourceAssignments.sort((left, right) => {
     if (left.order !== right.order) {
       return left.order - right.order;
     }

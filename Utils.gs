@@ -25,6 +25,10 @@ function getObjectRows_(sheetName) {
       const obj = {};
       headers.forEach((header, idx) => {
         obj[header] = row[idx];
+        const normalizedHeader = normalizeLookupKey_(header);
+        if (normalizedHeader && typeof obj[normalizedHeader] === 'undefined') {
+          obj[normalizedHeader] = row[idx];
+        }
       });
       return obj;
     });
