@@ -618,7 +618,11 @@ function shrinkSheetToDataBuffer_(sheet, minRows, minColumns) {
   const currentRows = Math.max(1, Math.floor(toNumber_(sheet.getMaxRows(), 1)));
   const rowsToDelete = currentRows - targetRows;
   if (rowsToDelete > 0 && targetRows >= 1 && targetRows < currentRows) {
-    sheet.deleteRows(targetRows + 1, rowsToDelete);
+    try {
+      sheet.deleteRows(targetRows + 1, rowsToDelete);
+    } catch (error) {
+      // Nie blokuj setupu, gdy arkusz chwilowo nie pozwala na usuwanie wierszy.
+    }
   }
 
   const lastColumn = Math.max(
@@ -636,6 +640,10 @@ function shrinkSheetToDataBuffer_(sheet, minRows, minColumns) {
     targetColumns >= 1 &&
     targetColumns < currentColumns
   ) {
-    sheet.deleteColumns(targetColumns + 1, columnsToDelete);
+    try {
+      sheet.deleteColumns(targetColumns + 1, columnsToDelete);
+    } catch (error) {
+      // Nie blokuj setupu, gdy arkusz chwilowo nie pozwala na usuwanie kolumn.
+    }
   }
 }
