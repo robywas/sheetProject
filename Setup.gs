@@ -113,11 +113,11 @@ function seedSampleData() {
   startDate.setDate(1);
 
   appendRowsIfOnlyHeader_(clientProceduresSheet, [
-    ['Jan Kowalski', 'Kontrola cisnienia', startDate],
-    ['Jan Kowalski', 'Kontrola glikemii', startDate],
-    ['Anna Nowak', 'Ocena rany', startDate],
-    ['Piotr Wisniewski', 'Kontrola cisnienia', startDate],
-    ['Maria Zielinska', 'Kontrola glikemii', startDate],
+    ['Jan Kowalski', 'Kontrola cisnienia', startDate, 'Mierzyc po 10 minutach odpoczynku.'],
+    ['Jan Kowalski', 'Kontrola glikemii', startDate, 'Pomiar rano, na czczo.'],
+    ['Anna Nowak', 'Ocena rany', startDate, 'Dokumentacja zdjeciowa przy zmianie opatrunku.'],
+    ['Piotr Wisniewski', 'Kontrola cisnienia', startDate, 'Uwzglednic druga reke przy odchyleniach.'],
+    ['Maria Zielinska', 'Kontrola glikemii', startDate, 'W razie objawow zrobic dodatkowy pomiar.'],
   ]);
 
   appendRowsIfOnlyHeader_(assignmentsSheet, [
@@ -176,6 +176,7 @@ function applyFormatting_() {
 
 function applyDataHints_() {
   const proceduresSheet = getSheetOrThrow_(SHEET_NAMES.PROCEDURES);
+  const clientProceduresSheet = getSheetOrThrow_(SHEET_NAMES.CLIENT_PROCEDURES);
   proceduresSheet.getRange('C1').setNote(
     'Dla trybu miesiecznego podaj dzien: 1..31 lub "' + SCHEDULE_LAST_DAY_TOKEN + '".'
   );
@@ -189,6 +190,9 @@ function applyDataHints_() {
   proceduresSheet.getRange('F1').setNote(
     'Interwal: dla trybu miesiecznego = co ile miesiecy, dla dziennego = co ile dni.'
   );
+  clientProceduresSheet
+    .getRange('D1')
+    .setNote('Uwagi do konkretnego powiazania klient-procedura. Pokazywane w Moje_zadania.');
 }
 
 function applyDataValidation_() {
@@ -372,6 +376,9 @@ function migrateIdBasedModelToNameModel_() {
           procedureIdToName
         ),
         getNamedValue_(row, clientProceduresSnapshot.indices, 'data_start'),
+        normalizeText_(
+          getNamedValue_(row, clientProceduresSnapshot.indices, 'uwagi', 'notatki')
+        ) || normalizeText_(getNamedValue_(row, clientProceduresSnapshot.indices, 'notes')),
       ];
     })
     .filter(Boolean)

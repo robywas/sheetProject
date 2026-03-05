@@ -6,6 +6,9 @@ function refreshMyTasksView() {
     );
   }
 
+  const relationNotesByKey = buildClientProcedureNotesByKey_(
+    getObjectRows_(SHEET_NAMES.CLIENT_PROCEDURES)
+  );
   const taskRows = getObjectRows_(SHEET_NAMES.TASKS);
   const openTasks = taskRows
     .filter(
@@ -15,13 +18,19 @@ function refreshMyTasksView() {
     )
     .filter((row) => normalizeText_(row.status) !== STATUS.DONE)
     .map((row) => {
+      const clientName = normalizeText_(row.klient || row.client_id);
+      const procedureName = normalizeText_(row.procedura || row.procedure_id);
       return {
         taskId: normalizeText_(row.task_id),
-        clientName: normalizeText_(row.klient || row.client_id),
-        procedureName: normalizeText_(row.procedura || row.procedure_id),
+        clientName,
+        procedureName,
         dueDate: toDate_(row.due_date),
         status: normalizeText_(row.status) || STATUS.NEW,
         note: row.notes || '',
+        relationNote:
+          relationNotesByKey[
+            buildClientProcedureRelationKey_(clientName, procedureName)
+          ] || '',
       };
     })
     .filter((task) => task.taskId && task.dueDate)
@@ -43,6 +52,7 @@ function refreshMyTasksView() {
     task.procedureName,
     task.status,
     task.note,
+    task.relationNote,
   ]);
 
   ensureSheetSize_(myTasksSheet, rows.length + 1, HEADERS.MY_TASKS.length);
@@ -69,6 +79,34 @@ function refreshMyTasksView() {
     }
   });
 
+}
+
+function buildClientProcedureRelationKey_(clientName, procedureName) {
+  return (
+    normalizeLookupKey_(clientName) + '|' + normalizeLookupKey_(procedureName)
+  );
+}
+
+function buildClientProcedureNotesByKey_(clientProcedureRows) {
+  const map = {};
+  clientProcedureRows.forEach((row) => {
+    const clientName = normalizeText_(row.klient || row.client_id);
+    const procedureName = normalizeText_(row.procedura || row.procedure_id);
+    if (!clientName || !procedureName) {
+      return;
+    }
+
+    const key = buildClientProcedureRelationKey_(clientName, procedureName);
+    const note =
+      normalizeText_(row.uwagi || row.notatki || row.notes || row.note) || '';
+    if (
+      note ||
+      !Object.prototype.hasOwnProperty.call(map, key)
+    ) {
+      map[key] = note;
+    }
+  });
+  return map;
 }
 
 function refreshManagerDashboard() {

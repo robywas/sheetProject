@@ -49,7 +49,8 @@ Po uruchomieniu `setupWorkbook()` skrypt zaklada:
   Odswieza widok pracownika:
   - pokazuje tylko zadania przypisane do zalogowanego usera (po `email` z zakladki `Pracownicy`),
   - sortuje po terminie,
-  - pozwala zmieniac status (`NOWE`, `W_TRAKCIE`, `WYKONANE`).
+  - pozwala zmieniac status (`NOWE`, `W_TRAKCIE`, `WYKONANE`),
+  - pokazuje `uwagi_powiazania` z arkusza `Klienci_Procedury`.
 
 - `refreshManagerDashboard()`  
   Buduje dashboard managera:
@@ -114,6 +115,7 @@ Panele boczne:
 3. W `Przypisania` utrzymuj zakresy dat przypisania klienta do pracownika
    i `kolejnosc` do sterowania rotacja.
 4. Po dodaniu klienta powiaz go recznie z procedurami w `Klienci_Procedury`.
+   W kolumnie `uwagi` mozesz dopisac wskazowki dla wykonawcy (widoczne w `Moje_zadania`).
 5. Dodaj trigger czasowy (np. codziennie 06:00) dla `generateTasks30Days()`.
 6. Ustal workflow statusow (`NOWE`, `W_TRAKCIE`, `WYKONANE`) zgodny z Twoim procesem.
 
