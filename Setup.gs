@@ -604,15 +604,38 @@ function getDefaultMinRowsForSheet_(sheetName) {
 }
 
 function shrinkSheetToDataBuffer_(sheet, minRows, minColumns) {
-  const targetRows = Math.max(minRows, sheet.getLastRow() + 10);
-  const currentRows = sheet.getMaxRows();
-  if (currentRows > targetRows) {
-    sheet.deleteRows(targetRows + 1, currentRows - targetRows);
+  const safeMinRows = Math.max(
+    1,
+    Math.floor(toNumber_(minRows, DEFAULT_SHEET_MIN_ROWS))
+  );
+  const safeMinColumns = Math.max(
+    1,
+    Math.floor(toNumber_(minColumns, 1))
+  );
+
+  const lastRow = Math.max(1, Math.floor(toNumber_(sheet.getLastRow(), 1)));
+  const targetRows = Math.max(safeMinRows, lastRow + 10);
+  const currentRows = Math.max(1, Math.floor(toNumber_(sheet.getMaxRows(), 1)));
+  const rowsToDelete = currentRows - targetRows;
+  if (rowsToDelete > 0 && targetRows >= 1 && targetRows < currentRows) {
+    sheet.deleteRows(targetRows + 1, rowsToDelete);
   }
 
-  const targetColumns = Math.max(minColumns, sheet.getLastColumn());
-  const currentColumns = sheet.getMaxColumns();
-  if (currentColumns > targetColumns) {
-    sheet.deleteColumns(targetColumns + 1, currentColumns - targetColumns);
+  const lastColumn = Math.max(
+    safeMinColumns,
+    Math.floor(toNumber_(sheet.getLastColumn(), safeMinColumns))
+  );
+  const targetColumns = Math.max(safeMinColumns, lastColumn);
+  const currentColumns = Math.max(
+    1,
+    Math.floor(toNumber_(sheet.getMaxColumns(), 1))
+  );
+  const columnsToDelete = currentColumns - targetColumns;
+  if (
+    columnsToDelete > 0 &&
+    targetColumns >= 1 &&
+    targetColumns < currentColumns
+  ) {
+    sheet.deleteColumns(targetColumns + 1, columnsToDelete);
   }
 }
