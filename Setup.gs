@@ -53,7 +53,7 @@ function setupWorkbook() {
     // Dashboard moze byc odswiezony pozniej z menu.
   }
   SpreadsheetApp.getActiveSpreadsheet().toast(
-    'Struktura arkusza jest gotowa.',
+    'Struktura arkusza jest gotowa (build: 2026-03-05c).',
     'Procedury',
     5
   );
@@ -612,46 +612,11 @@ function getDefaultMinRowsForSheet_(sheetName) {
 }
 
 function shrinkSheetToDataBuffer_(sheet, minRows, minColumns) {
-  const safeMinRows = Math.max(
-    1,
-    Math.floor(toNumber_(minRows, DEFAULT_SHEET_MIN_ROWS))
-  );
-  const safeMinColumns = Math.max(
-    1,
-    Math.floor(toNumber_(minColumns, 1))
-  );
-
-  const lastRow = Math.max(1, Math.floor(toNumber_(sheet.getLastRow(), 1)));
-  const targetRows = Math.max(safeMinRows, lastRow + 10);
-  const currentRows = Math.max(1, Math.floor(toNumber_(sheet.getMaxRows(), 1)));
-  const rowsToDelete = currentRows - targetRows;
-  if (rowsToDelete > 0 && targetRows >= 1 && targetRows < currentRows) {
-    try {
-      sheet.deleteRows(targetRows + 1, rowsToDelete);
-    } catch (error) {
-      // Nie blokuj setupu, gdy arkusz chwilowo nie pozwala na usuwanie wierszy.
-    }
-  }
-
-  const lastColumn = Math.max(
-    safeMinColumns,
-    Math.floor(toNumber_(sheet.getLastColumn(), safeMinColumns))
-  );
-  const targetColumns = Math.max(safeMinColumns, lastColumn);
-  const currentColumns = Math.max(
-    1,
-    Math.floor(toNumber_(sheet.getMaxColumns(), 1))
-  );
-  const columnsToDelete = currentColumns - targetColumns;
-  if (
-    columnsToDelete > 0 &&
-    targetColumns >= 1 &&
-    targetColumns < currentColumns
-  ) {
-    try {
-      sheet.deleteColumns(targetColumns + 1, columnsToDelete);
-    } catch (error) {
-      // Nie blokuj setupu, gdy arkusz chwilowo nie pozwala na usuwanie kolumn.
-    }
+  // Tymczasowo nie zmniejszamy arkuszy podczas setupu/migracji.
+  // U niektorych kont Google Sheets deleteRows/deleteColumns potrafi
+  // rzucac niestabilny blad "Podaj liczbe >= 0." mimo poprawnych argumentow.
+  // Arkusze i tak sa rozszerzane dynamicznie przez ensureSheetSize_.
+  if (!sheet || !minRows || !minColumns) {
+    return;
   }
 }
