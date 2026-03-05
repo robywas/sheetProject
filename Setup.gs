@@ -550,7 +550,15 @@ function writeMigratedSheet_(sheet, headers, rows) {
   if (rows.length > 0) {
     sheet.getRange(2, 1, rows.length, headers.length).setValues(rows);
   }
-  shrinkSheetToDataBuffer_(sheet, getDefaultMinRowsForSheet_(sheet.getName()), headers.length);
+  try {
+    shrinkSheetToDataBuffer_(
+      sheet,
+      getDefaultMinRowsForSheet_(sheet.getName()),
+      headers.length
+    );
+  } catch (error) {
+    // Migracja nie moze zatrzymac setupu przez problem z redukcja rozmiaru.
+  }
 }
 
 function migrateLegacySheetNames_(spreadsheet) {
