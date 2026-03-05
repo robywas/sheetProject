@@ -53,7 +53,7 @@ function setupWorkbook() {
     // Dashboard moze byc odswiezony pozniej z menu.
   }
   SpreadsheetApp.getActiveSpreadsheet().toast(
-    'Struktura arkusza jest gotowa (build: 2026-03-05c).',
+    'Struktura arkusza jest gotowa (build: 2026-03-05d).',
     'Procedury',
     5
   );
@@ -149,7 +149,12 @@ function ensureSheetWithHeader_(spreadsheet, sheetName, headers) {
   sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
   sheet.getRange(1, 1, 1, headers.length).setFontWeight('bold');
   sheet.getRange(1, 1, 1, headers.length).setBackground('#f1f3f4');
-  sheet.setFrozenRows(1);
+  try {
+    const maxRows = Math.max(1, toNumber_(sheet.getMaxRows(), 1));
+    sheet.setFrozenRows(Math.min(1, maxRows));
+  } catch (error) {
+    // Zamrozenie naglowka jest opcjonalne i nie moze blokowac setupu.
+  }
 
   shrinkSheetToDataBuffer_(sheet, getDefaultMinRowsForSheet_(sheetName), headers.length);
 }
