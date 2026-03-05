@@ -52,8 +52,8 @@ const HEADERS = Object.freeze({
     'klient',
     'procedura',
     'status',
+    'uwagi',
     'notatka',
-    'uwagi_powiazania',
   ],
 });
 
@@ -82,8 +82,8 @@ const MY_TASKS_COL = Object.freeze({
   CLIENT: 3,
   PROCEDURE: 4,
   STATUS: 5,
-  NOTE: 6,
-  RELATION_NOTE: 7,
+  RELATION_NOTE: 6,
+  NOTE: 7,
 });
 
 const DEFAULT_GENERATION_DAYS = 30;

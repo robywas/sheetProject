@@ -51,8 +51,8 @@ function refreshMyTasksView() {
     task.clientName,
     task.procedureName,
     task.status,
-    task.note,
     task.relationNote,
+    task.note,
   ]);
 
   ensureSheetSize_(myTasksSheet, rows.length + 1, HEADERS.MY_TASKS.length);

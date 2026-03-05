@@ -50,7 +50,7 @@ Po uruchomieniu `setupWorkbook()` skrypt zaklada:
   - pokazuje tylko zadania przypisane do zalogowanego usera (po `email` z zakladki `Pracownicy`),
   - sortuje po terminie,
   - pozwala zmieniac status (`NOWE`, `W_TRAKCIE`, `WYKONANE`),
-  - pokazuje `uwagi_powiazania` z arkusza `Klienci_Procedury`.
+  - pokazuje `uwagi` z arkusza `Klienci_Procedury`.
 
 - `refreshManagerDashboard()`  
   Buduje dashboard managera:
