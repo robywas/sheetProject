@@ -41,7 +41,9 @@ Po uruchomieniu `setupWorkbook()` skrypt zaklada:
     - `DZIENNY` + `interwal` (np. `1` codziennie, `2` co 2 dni),
   - przypisuje pracownika wg zakladki `Przypisania` (z rotacja wg `kolejnosc`),
   - nie duplikuje zadan (klucz: `klient|procedura|due_date`),
-  - po zapisie sortuje `Zadania` po `due_date` malejaco.
+  - po zapisie sortuje `Zadania`:
+    - najpierw zadania otwarte (`NOWE`, `W_TRAKCIE`) po `due_date` malejaco,
+    - potem `WYKONANE` po `completed_at` malejaco.
 
 - `refreshMyTasksView()`  
   Odswieza widok pracownika:

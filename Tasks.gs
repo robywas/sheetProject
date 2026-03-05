@@ -672,13 +672,51 @@ function sortTasksByDueDateDesc_() {
     return;
   }
 
-  taskSheet
-    .getRange(2, 1, lastRow - 1, HEADERS.TASKS.length)
-    .sort([
-      { column: 5, ascending: false },
-      { column: 7, ascending: false },
-      { column: 1, ascending: true },
-    ]);
+  const range = taskSheet.getRange(2, 1, lastRow - 1, HEADERS.TASKS.length);
+  const rows = range.getValues();
+  if (!rows || rows.length < 2) {
+    return;
+  }
+
+  const toTimestamp = (value) => {
+    const dateValue = toDate_(value);
+    return dateValue ? dateValue.getTime() : -1;
+  };
+
+  rows.sort((left, right) => {
+    const leftStatus = normalizeText_(left[5]).toUpperCase();
+    const rightStatus = normalizeText_(right[5]).toUpperCase();
+    const leftDone = leftStatus === STATUS.DONE;
+    const rightDone = rightStatus === STATUS.DONE;
+
+    // WYKONANE zawsze pod otwartymi.
+    if (leftDone !== rightDone) {
+      return leftDone ? 1 : -1;
+    }
+
+    if (!leftDone && !rightDone) {
+      // NOWE/W_TRAKCIE i inne otwarte: due_date malejaco.
+      const dueDiff = toTimestamp(right[4]) - toTimestamp(left[4]);
+      if (dueDiff !== 0) {
+        return dueDiff;
+      }
+    } else {
+      // WYKONANE: completed_at malejaco.
+      const completedDiff = toTimestamp(right[7]) - toTimestamp(left[7]);
+      if (completedDiff !== 0) {
+        return completedDiff;
+      }
+    }
+
+    const createdDiff = toTimestamp(right[6]) - toTimestamp(left[6]);
+    if (createdDiff !== 0) {
+      return createdDiff;
+    }
+
+    return normalizeText_(left[0]).localeCompare(normalizeText_(right[0]));
+  });
+
+  range.setValues(rows);
 }
 
 function buildNameMapByKey_(rows, fieldCandidates) {
