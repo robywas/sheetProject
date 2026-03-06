@@ -5,7 +5,14 @@ function refreshMyTasksView() {
       'Nie znaleziono aktywnego pracownika dla Twojego emaila. Uzuplnij arkusz Pracownicy.'
     );
   }
+  refreshMyTasksViewForEmployeeName_(employee.employeeName);
+}
 
+function refreshMyTasksViewForEmployeeName_(employeeName) {
+  const selectedEmployeeName = normalizeText_(employeeName);
+  if (!selectedEmployeeName) {
+    return;
+  }
   const relationNotesByKey = buildClientProcedureNotesByKey_(
     getObjectRows_(SHEET_NAMES.CLIENT_PROCEDURES)
   );
@@ -14,7 +21,7 @@ function refreshMyTasksView() {
     .filter(
       (row) =>
         normalizeLookupKey_(row.pracownik || row.employee_id) ===
-        normalizeLookupKey_(employee.employeeName)
+        normalizeLookupKey_(selectedEmployeeName)
     )
     .filter((row) => normalizeText_(row.status) !== STATUS.DONE)
     .map((row) => {

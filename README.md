@@ -41,9 +41,7 @@ Po uruchomieniu `setupWorkbook()` skrypt zaklada:
     - `DZIENNY` + `interwal` (np. `1` codziennie, `2` co 2 dni),
   - przypisuje pracownika wg zakladki `Przypisania` (z rotacja wg `kolejnosc`),
   - nie duplikuje zadan (klucz: `klient|procedura|due_date`),
-  - po zapisie sortuje `Zadania`:
-    - najpierw zadania otwarte (`NOWE`, `W_TRAKCIE`) po `due_date` malejaco,
-    - potem `WYKONANE` po `completed_at` malejaco.
+  - po zapisie sortuje `Zadania` po `due_date` malejaco.
 
 - `refreshMyTasksView()`  
   Odswieza widok pracownika:
@@ -66,6 +64,8 @@ Po uruchomieniu `setupWorkbook()` skrypt zaklada:
   - status `WYKONANE` zamyka zadanie,
   - automatycznie tworzy sie kolejne zadanie wg trybu i interwalu procedury,
   - nowe zadanie jest przypisywane do kolejnego pracownika z puli klienta.
+  Dodatkowo, gdy manager zmieni `pracownik` w arkuszu `Zadania`,
+  widok `Moje_zadania` jest odswiezany dla wskazanego pracownika.
 
 ## 3) Interfejsy
 
@@ -114,6 +114,7 @@ Panele boczne:
    - `dzien_miesiaca`: wymagany dla trybu miesiecznego (`1..31` lub `OSTATNI`).
 3. W `Przypisania` utrzymuj zakresy dat przypisania klienta do pracownika
    i `kolejnosc` do sterowania rotacja.
+   Przy pustej kolumnie `pracownik` skrypt potraktuje to jako rotacje miedzy wszystkimi pracownikami.
 4. Po dodaniu klienta powiaz go recznie z procedurami w `Klienci_Procedury`.
    W kolumnie `uwagi` mozesz dopisac wskazowki dla wykonawcy (widoczne w `Moje_zadania`).
 5. Dodaj trigger czasowy (np. codziennie 06:00) dla `generateTasks30Days()`.

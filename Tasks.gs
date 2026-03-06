@@ -32,13 +32,12 @@ function generateRecurringTasks(daysAhead) {
   const employees = getObjectRows_(SHEET_NAMES.EMPLOYEES).filter((row) =>
     normalizeText_(row.pracownik || row.employee_id)
   );
+  const assignableEmployeeNames = getAssignableEmployeeNames_(employees);
   const clientProcedures = getObjectRows_(SHEET_NAMES.CLIENT_PROCEDURES).filter(
     (row) => normalizeText_(row.klient || row.client_id) && normalizeText_(row.procedura || row.procedure_id)
   );
-  const assignments = getObjectRows_(SHEET_NAMES.ASSIGNMENTS).filter(
-    (row) =>
-      normalizeText_(row.klient || row.client_id) &&
-      normalizeText_(row.pracownik || row.employee_id)
+  const assignments = getObjectRows_(SHEET_NAMES.ASSIGNMENTS).filter((row) =>
+    normalizeText_(row.klient || row.client_id)
   );
   const existingTasks = getObjectRows_(SHEET_NAMES.TASKS);
 
@@ -50,7 +49,8 @@ function generateRecurringTasks(daysAhead) {
   const assignmentsByClient = buildAssignmentsByClient_(
     assignments,
     activeClientsByKey,
-    employeesByKey
+    employeesByKey,
+    assignableEmployeeNames
   );
   const existingKeys = new Set();
   const employeeByTaskKey = {};
@@ -309,17 +309,39 @@ function updateTaskStatus_(taskId, newStatus) {
   return true;
 }
 
-function buildAssignmentsByClient_(assignmentRows, clientsByKey, employeesByKey) {
+function buildAssignmentsByClient_(
+  assignmentRows,
+  clientsByKey,
+  employeesByKey,
+  assignableEmployeeNames
+) {
   const map = {};
+  const employeeRankByKey = {};
+  (assignableEmployeeNames || []).forEach((employeeName, idx) => {
+    employeeRankByKey[normalizeLookupKey_(employeeName)] = idx;
+  });
+
   assignmentRows.forEach((row) => {
     const clientRaw = normalizeText_(row.klient || row.client_id);
     const employeeRaw = normalizeText_(row.pracownik || row.employee_id);
     const clientLookupKey = normalizeLookupKey_(clientRaw);
-    const employeeLookupKey = normalizeLookupKey_(employeeRaw);
     const clientName = (clientsByKey && clientsByKey[clientLookupKey]) || clientRaw;
-    const employeeName =
-      (employeesByKey && employeesByKey[employeeLookupKey]) || employeeRaw;
-    if (!clientName || !employeeName) {
+    if (!clientName) {
+      return;
+    }
+
+    const expandedEmployeeNames = [];
+    if (employeeRaw) {
+      const employeeLookupKey = normalizeLookupKey_(employeeRaw);
+      const employeeName =
+        (employeesByKey && employeesByKey[employeeLookupKey]) || employeeRaw;
+      if (employeeName) {
+        expandedEmployeeNames.push(employeeName);
+      }
+    } else if (assignableEmployeeNames && assignableEmployeeNames.length > 0) {
+      assignableEmployeeNames.forEach((name) => expandedEmployeeNames.push(name));
+    }
+    if (expandedEmployeeNames.length === 0) {
       return;
     }
 
@@ -327,11 +349,21 @@ function buildAssignmentsByClient_(assignmentRows, clientsByKey, employeesByKey)
       map[clientLookupKey] = [];
     }
 
-    map[clientLookupKey].push({
-      employeeName: employeeName,
-      fromDate: toDate_(row.data_od),
-      toDate: toDate_(row.data_do),
-      order: Math.max(1, toNumber_(row.kolejnosc, 9999)),
+    const fromDate = toDate_(row.data_od);
+    const toDate = toDate_(row.data_do);
+    const order = Math.max(1, toNumber_(row.kolejnosc, 9999));
+
+    expandedEmployeeNames.forEach((employeeName) => {
+      const rankKey = normalizeLookupKey_(employeeName);
+      const rankValue = employeeRankByKey[rankKey];
+      map[clientLookupKey].push({
+        employeeName: employeeName,
+        fromDate,
+        toDate,
+        order,
+        employeeRank:
+          typeof rankValue === 'number' ? rankValue : Number.MAX_SAFE_INTEGER,
+      });
     });
   });
 
@@ -340,6 +372,9 @@ function buildAssignmentsByClient_(assignmentRows, clientsByKey, employeesByKey)
       if (left.order !== right.order) {
         return left.order - right.order;
       }
+      if (left.employeeRank !== right.employeeRank) {
+        return left.employeeRank - right.employeeRank;
+      }
       return normalizeLookupKey_(left.employeeName).localeCompare(
         normalizeLookupKey_(right.employeeName)
       );
@@ -347,6 +382,36 @@ function buildAssignmentsByClient_(assignmentRows, clientsByKey, employeesByKey)
   });
 
   return map;
+}
+
+function getAssignableEmployeeNames_(employeeRows) {
+  const workerNames = [];
+  const allNames = [];
+  const seenAll = {};
+  const seenWorkers = {};
+
+  employeeRows.forEach((row) => {
+    const employeeName = normalizeText_(row.pracownik || row.employee_id);
+    if (!employeeName) {
+      return;
+    }
+    const key = normalizeLookupKey_(employeeName);
+    if (!seenAll[key]) {
+      allNames.push(employeeName);
+      seenAll[key] = true;
+    }
+
+    const role = normalizeLookupKey_(row.rola);
+    if (role === 'manager') {
+      return;
+    }
+    if (!seenWorkers[key]) {
+      workerNames.push(employeeName);
+      seenWorkers[key] = true;
+    }
+  });
+
+  return workerNames.length > 0 ? workerNames : allNames;
 }
 
 function pickNextEmployeeForDate_(clientAssignments, dueDate, previousEmployeeName) {
@@ -590,10 +655,8 @@ function createNextTaskFromCompleted_(completedTask) {
     return false;
   }
 
-  const assignments = getObjectRows_(SHEET_NAMES.ASSIGNMENTS).filter(
-    (row) =>
-      normalizeText_(row.klient || row.client_id) &&
-      normalizeText_(row.pracownik || row.employee_id)
+  const assignments = getObjectRows_(SHEET_NAMES.ASSIGNMENTS).filter((row) =>
+    normalizeText_(row.klient || row.client_id)
   );
   const clients = getObjectRows_(SHEET_NAMES.CLIENTS).filter((row) =>
     normalizeText_(row.klient)
@@ -601,10 +664,12 @@ function createNextTaskFromCompleted_(completedTask) {
   const employees = getObjectRows_(SHEET_NAMES.EMPLOYEES).filter((row) =>
     normalizeText_(row.pracownik || row.employee_id)
   );
+  const assignableEmployeeNames = getAssignableEmployeeNames_(employees);
   const assignmentsByClient = buildAssignmentsByClient_(
     assignments,
     buildNameMapByKey_(clients, ['klient', 'client_id']),
-    buildNameMapByKey_(employees, ['pracownik', 'employee_id'])
+    buildNameMapByKey_(employees, ['pracownik', 'employee_id']),
+    assignableEmployeeNames
   );
   const employeeName = pickNextEmployeeForDate_(
     assignmentsByClient[normalizeLookupKey_(completedTask.clientName)] || [],
@@ -668,13 +733,13 @@ function getNextDueDateForProcedure_(dueDate, procedureConfig) {
 function sortTasksByDueDateDesc_() {
   const taskSheet = getSheetOrThrow_(SHEET_NAMES.TASKS);
   const lastRow = taskSheet.getLastRow();
-  if (lastRow < 3) {
+  if (lastRow < 2) {
     return;
   }
 
   const range = taskSheet.getRange(2, 1, lastRow - 1, HEADERS.TASKS.length);
   const rows = range.getValues();
-  if (!rows || rows.length < 2) {
+  if (!rows || rows.length < 1) {
     return;
   }
 
@@ -684,28 +749,9 @@ function sortTasksByDueDateDesc_() {
   };
 
   rows.sort((left, right) => {
-    const leftStatus = normalizeText_(left[5]).toUpperCase();
-    const rightStatus = normalizeText_(right[5]).toUpperCase();
-    const leftDone = leftStatus === STATUS.DONE;
-    const rightDone = rightStatus === STATUS.DONE;
-
-    // WYKONANE zawsze pod otwartymi.
-    if (leftDone !== rightDone) {
-      return leftDone ? 1 : -1;
-    }
-
-    if (!leftDone && !rightDone) {
-      // NOWE/W_TRAKCIE i inne otwarte: due_date malejaco.
-      const dueDiff = toTimestamp(right[4]) - toTimestamp(left[4]);
-      if (dueDiff !== 0) {
-        return dueDiff;
-      }
-    } else {
-      // WYKONANE: completed_at malejaco.
-      const completedDiff = toTimestamp(right[7]) - toTimestamp(left[7]);
-      if (completedDiff !== 0) {
-        return completedDiff;
-      }
+    const dueDiff = toTimestamp(right[4]) - toTimestamp(left[4]);
+    if (dueDiff !== 0) {
+      return dueDiff;
     }
 
     const createdDiff = toTimestamp(right[6]) - toTimestamp(left[6]);
@@ -748,13 +794,26 @@ function onEdit(e) {
   }
 
   const editedSheetName = sheet.getName();
-  if (
-    editedSheetName === SHEET_NAMES.TASKS &&
-    e.range.getRow() > 1 &&
-    e.range.getColumn() === 5
-  ) {
-    sortTasksByDueDateDesc_();
-    return;
+  if (editedSheetName === SHEET_NAMES.TASKS && e.range.getRow() > 1) {
+    const editedColumn = e.range.getColumn();
+    if (editedColumn === 5) {
+      sortTasksByDueDateDesc_();
+      return;
+    }
+    if (editedColumn === 4) {
+      const selectedEmployeeName = normalizeText_(e.range.getValue());
+      try {
+        if (selectedEmployeeName) {
+          refreshMyTasksViewForEmployeeName_(selectedEmployeeName);
+        } else {
+          refreshMyTasksView();
+        }
+      } catch (error) {
+        // Manager bez mapowania pracownika moze przepisywac zadania.
+      }
+      refreshManagerDashboard();
+      return;
+    }
   }
 
   if (editedSheetName !== SHEET_NAMES.MY_TASKS || e.range.getRow() === 1) {

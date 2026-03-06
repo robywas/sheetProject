@@ -177,6 +177,7 @@ function applyFormatting_() {
 function applyDataHints_() {
   const proceduresSheet = getSheetOrThrow_(SHEET_NAMES.PROCEDURES);
   const clientProceduresSheet = getSheetOrThrow_(SHEET_NAMES.CLIENT_PROCEDURES);
+  const assignmentsSheet = getSheetOrThrow_(SHEET_NAMES.ASSIGNMENTS);
   proceduresSheet.getRange('C1').setNote(
     'Dla trybu miesiecznego podaj dzien: 1..31 lub "' + SCHEDULE_LAST_DAY_TOKEN + '".'
   );
@@ -193,6 +194,9 @@ function applyDataHints_() {
   clientProceduresSheet
     .getRange('D1')
     .setNote('Uwagi do konkretnego powiazania klient-procedura. Pokazywane w Moje_zadania.');
+  assignmentsSheet
+    .getRange('B1')
+    .setNote('Pusty pracownik = automatyczna rotacja miedzy wszystkimi pracownikami.');
 }
 
 function applyDataValidation_() {
@@ -257,10 +261,26 @@ function applyDataValidation_() {
     .setAllowInvalid(false)
     .setHelpText('Wybierz procedure z zakladki Procedury.')
     .build();
-  const employeeNameRule = SpreadsheetApp.newDataValidation()
-    .requireValueInRange(employeeNameRange, true)
+  const employeeOptions = [''];
+  const employeeSeen = {};
+  employeeNameRange.getValues().forEach((row) => {
+    const employeeName = normalizeText_(row[0]);
+    if (!employeeName) {
+      return;
+    }
+    const key = normalizeLookupKey_(employeeName);
+    if (employeeSeen[key]) {
+      return;
+    }
+    employeeSeen[key] = true;
+    employeeOptions.push(employeeName);
+  });
+  const optionalEmployeeNameRule = SpreadsheetApp.newDataValidation()
+    .requireValueInList(employeeOptions, true)
     .setAllowInvalid(false)
-    .setHelpText('Wybierz pracownika z zakladki Pracownicy.')
+    .setHelpText(
+      'Wybierz pracownika albo zostaw puste (rotacja wszystkich pracownikow).'
+    )
     .build();
 
   clientProceduresSheet.getRange(2, 1, clientProcedureRows, 1).setDataValidation(clientNameRule);
@@ -268,7 +288,9 @@ function applyDataValidation_() {
     .getRange(2, 2, clientProcedureRows, 1)
     .setDataValidation(procedureNameRule);
   assignmentsSheet.getRange(2, 1, assignmentRows, 1).setDataValidation(clientNameRule);
-  assignmentsSheet.getRange(2, 2, assignmentRows, 1).setDataValidation(employeeNameRule);
+  assignmentsSheet
+    .getRange(2, 2, assignmentRows, 1)
+    .setDataValidation(optionalEmployeeNameRule);
 
 }
 
@@ -415,7 +437,7 @@ function migrateIdBasedModelToNameModel_() {
       ];
     })
     .filter(Boolean)
-    .filter((row) => normalizeText_(row[0]) && normalizeText_(row[1]));
+    .filter((row) => normalizeText_(row[0]));
 
   const migratedTasks = tasksSnapshot.rows
     .map((row) => {
