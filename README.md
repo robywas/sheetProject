@@ -130,6 +130,7 @@ Po `setupWorkbook()` skrypt ustawia:
 - `Procedury!interwal` - liczba calkowita >= 1,
 - `Przypisania!kolejnosc` - liczba calkowita >= 1,
 - walidacje nazw `klient`, `procedura`, `pracownik` na podstawie slownikow,
+- `Zadania!pracownik` - lista pracownikow z mozliwoscia pustej wartosci,
 - dodatkowa kontrola przy edycji (onEdit), ktora czyści nieprawidlowe liczby niecalkowite
   w `dni_ostrzezenia`, `interwal` i `kolejnosc`.
 

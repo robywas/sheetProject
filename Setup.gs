@@ -178,6 +178,7 @@ function applyDataHints_() {
   const proceduresSheet = getSheetOrThrow_(SHEET_NAMES.PROCEDURES);
   const clientProceduresSheet = getSheetOrThrow_(SHEET_NAMES.CLIENT_PROCEDURES);
   const assignmentsSheet = getSheetOrThrow_(SHEET_NAMES.ASSIGNMENTS);
+  const tasksSheet = getSheetOrThrow_(SHEET_NAMES.TASKS);
   proceduresSheet.getRange('C1').setNote(
     'Dla trybu miesiecznego podaj dzien: 1..31 lub "' + SCHEDULE_LAST_DAY_TOKEN + '".'
   );
@@ -197,6 +198,9 @@ function applyDataHints_() {
   assignmentsSheet
     .getRange('B1')
     .setNote('Pusty pracownik = automatyczna rotacja miedzy wszystkimi pracownikami.');
+  tasksSheet
+    .getRange('D1')
+    .setNote('Wybierz pracownika z listy (slownik z arkusza Pracownicy).');
 }
 
 function applyDataValidation_() {
@@ -205,12 +209,14 @@ function applyDataValidation_() {
   const employeesSheet = getSheetOrThrow_(SHEET_NAMES.EMPLOYEES);
   const clientProceduresSheet = getSheetOrThrow_(SHEET_NAMES.CLIENT_PROCEDURES);
   const assignmentsSheet = getSheetOrThrow_(SHEET_NAMES.ASSIGNMENTS);
+  const tasksSheet = getSheetOrThrow_(SHEET_NAMES.TASKS);
 
   const procedureRows = proceduresSheet.getMaxRows() - 1;
   const clientRows = clientsSheet.getMaxRows() - 1;
   const employeeRows = employeesSheet.getMaxRows() - 1;
   const clientProcedureRows = clientProceduresSheet.getMaxRows() - 1;
   const assignmentRows = assignmentsSheet.getMaxRows() - 1;
+  const taskRows = tasksSheet.getMaxRows() - 1;
 
   const monthDayOptions = [''];
   for (let day = 1; day <= 31; day += 1) {
@@ -291,6 +297,7 @@ function applyDataValidation_() {
   assignmentsSheet
     .getRange(2, 2, assignmentRows, 1)
     .setDataValidation(optionalEmployeeNameRule);
+  tasksSheet.getRange(2, 4, taskRows, 1).setDataValidation(optionalEmployeeNameRule);
 
 }
 

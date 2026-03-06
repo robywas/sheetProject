@@ -801,13 +801,10 @@ function onEdit(e) {
       return;
     }
     if (editedColumn === 4) {
-      const selectedEmployeeName = normalizeText_(e.range.getValue());
       try {
-        if (selectedEmployeeName) {
-          refreshMyTasksViewForEmployeeName_(selectedEmployeeName);
-        } else {
-          refreshMyTasksView();
-        }
+        // Odswiezamy widok biezacego uzytkownika, aby od razu zobaczyl
+        // efekt przepisania zadania do innego pracownika.
+        refreshMyTasksView();
       } catch (error) {
         // Manager bez mapowania pracownika moze przepisywac zadania.
       }
