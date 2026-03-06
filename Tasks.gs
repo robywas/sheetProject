@@ -216,7 +216,7 @@ function generateRecurringTasks(daysAhead) {
   }
 
   if (newRows.length > 0 || reassignmentUpdates.length > 0) {
-    sortTasksByDueDateDesc_();
+    sortTasksByDueDateAsc_();
   }
 
   return {
@@ -258,7 +258,7 @@ function markTaskAsDone_(taskId) {
 
   sheet.getRange(row, 6).setValue(STATUS.DONE);
   sheet.getRange(row, 8).setValue(new Date());
-  sortTasksByDueDateDesc_();
+  sortTasksByDueDateAsc_();
   return completedTask;
 }
 
@@ -305,7 +305,7 @@ function updateTaskStatus_(taskId, newStatus) {
   } else {
     sheet.getRange(rowNumber, 8).clearContent();
   }
-  sortTasksByDueDateDesc_();
+  sortTasksByDueDateAsc_();
   return true;
 }
 
@@ -696,7 +696,7 @@ function createNextTaskFromCompleted_(completedTask) {
   taskSheet
     .getRange(taskSheet.getLastRow() + 1, 1, 1, HEADERS.TASKS.length)
     .setValues([row]);
-  sortTasksByDueDateDesc_();
+  sortTasksByDueDateAsc_();
   return true;
 }
 
@@ -730,7 +730,7 @@ function getNextDueDateForProcedure_(dueDate, procedureConfig) {
   );
 }
 
-function sortTasksByDueDateDesc_() {
+function sortTasksByDueDateAsc_() {
   const taskSheet = getSheetOrThrow_(SHEET_NAMES.TASKS);
   const lastRow = taskSheet.getLastRow();
   if (lastRow < 2) {
@@ -745,11 +745,11 @@ function sortTasksByDueDateDesc_() {
 
   const toTimestamp = (value) => {
     const dateValue = toDate_(value);
-    return dateValue ? dateValue.getTime() : -1;
+    return dateValue ? dateValue.getTime() : Number.MAX_SAFE_INTEGER;
   };
 
   rows.sort((left, right) => {
-    const dueDiff = toTimestamp(right[4]) - toTimestamp(left[4]);
+    const dueDiff = toTimestamp(left[4]) - toTimestamp(right[4]);
     if (dueDiff !== 0) {
       return dueDiff;
     }
@@ -797,7 +797,7 @@ function onEdit(e) {
   if (editedSheetName === SHEET_NAMES.TASKS && e.range.getRow() > 1) {
     const editedColumn = e.range.getColumn();
     if (editedColumn === 5) {
-      sortTasksByDueDateDesc_();
+      sortTasksByDueDateAsc_();
       return;
     }
     if (editedColumn === 4) {

@@ -43,7 +43,7 @@ function setupWorkbook() {
   applyDataHints_();
   applyDataValidation_();
   try {
-    sortTasksByDueDateDesc_();
+    sortTasksByDueDateAsc_();
   } catch (error) {
     // Sortowanie zadan nie powinno blokowac setupu.
   }
