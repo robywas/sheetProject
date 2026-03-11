@@ -16,7 +16,7 @@ function sendTaskReminderEmails() {
   Object.keys(tasksByEmployee).forEach((employeeName) => {
     const tasks = tasksByEmployee[employeeName];
     totalTasks += tasks.length;
-    const email = employeeToEmail[normalizeLookupKey_(employeeName)];
+    const email = employeeToEmail[employeeLookupKey_(employeeName)];
     if (!email) {
       skipCount += 1;
       return;
@@ -71,7 +71,7 @@ function getTasksDueTodayOrOverdueByEmployee_(todayKey) {
       return;
     }
 
-    const key = normalizeLookupKey_(employeeName);
+    const key = employeeLookupKey_(employeeName);
     if (!byEmployee[key]) {
       byEmployee[key] = [];
     }
@@ -98,12 +98,21 @@ function getEmployeeEmailMap_() {
   const map = {};
   rows.forEach((row) => {
     const name = normalizeText_(row.pracownik || row.employee_id);
-    const email = normalizeText_(row.email);
+    const email = getEmailFromEmployeeRow_(row);
     if (name && email) {
-      map[normalizeLookupKey_(name)] = email;
+      map[employeeLookupKey_(name)] = email;
     }
   });
   return map;
+}
+
+function getEmailFromEmployeeRow_(row) {
+  const v = row.email || row['e-mail'] || row['E-mail'] || row.Email;
+  return normalizeText_(v);
+}
+
+function employeeLookupKey_(name) {
+  return normalizeText_(name || '').toLowerCase().replace(/\s+/g, ' ').trim();
 }
 
 function buildReminderEmailBody_(overdue, dueToday, today) {
