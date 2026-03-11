@@ -392,10 +392,8 @@ function buildAssignmentsByClient_(
 }
 
 function getAssignableEmployeeNames_(employeeRows) {
-  const workerNames = [];
-  const allNames = [];
-  const seenAll = {};
-  const seenWorkers = {};
+  const names = [];
+  const seen = {};
 
   employeeRows.forEach((row) => {
     const employeeName = normalizeText_(row.pracownik || row.employee_id);
@@ -406,22 +404,13 @@ function getAssignableEmployeeNames_(employeeRows) {
       return;
     }
     const key = normalizeLookupKey_(employeeName);
-    if (!seenAll[key]) {
-      allNames.push(employeeName);
-      seenAll[key] = true;
-    }
-
-    const role = normalizeLookupKey_(row.rola);
-    if (role === 'manager') {
-      return;
-    }
-    if (!seenWorkers[key]) {
-      workerNames.push(employeeName);
-      seenWorkers[key] = true;
+    if (!seen[key]) {
+      names.push(employeeName);
+      seen[key] = true;
     }
   });
 
-  return workerNames.length > 0 ? workerNames : allNames;
+  return names;
 }
 
 function pickNextEmployeeForDate_(clientAssignments, dueDate, previousEmployeeName) {
