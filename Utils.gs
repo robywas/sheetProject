@@ -110,7 +110,9 @@ function clearSheetBody_(sheet, maxColumns) {
   if (lastRow <= 1) {
     return;
   }
-  sheet.getRange(2, 1, lastRow - 1, maxColumns).clearContent().clearFormat();
+  const range = sheet.getRange(2, 1, lastRow - 1, maxColumns);
+  range.clearContent().clearFormat();
+  range.setDataValidation(null);
 }
 
 function ensureSheetSize_(sheet, requiredRows, requiredColumns) {
