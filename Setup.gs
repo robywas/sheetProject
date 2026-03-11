@@ -416,6 +416,7 @@ function migrateIdBasedModelToNameModel_() {
         normalizeText_(
           getNamedValue_(row, clientProceduresSnapshot.indices, 'uwagi', 'notatki')
         ) || normalizeText_(getNamedValue_(row, clientProceduresSnapshot.indices, 'notes')),
+        '', // kontrola – uzupelni refreshClientProceduresControl
       ];
     })
     .filter(Boolean)
