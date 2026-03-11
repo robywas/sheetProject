@@ -99,7 +99,7 @@ function getTasksDueTodayOrOverdueByEmployee_(todayKey) {
       dueDate,
       employeeName,
     });
-  });
+  }
 
   const byEmployeeName = {};
   Object.keys(byEmployee).forEach((key) => {
