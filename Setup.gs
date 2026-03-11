@@ -108,9 +108,9 @@ function seedSampleData() {
   ]);
 
   appendRowsIfOnlyHeader_(employeesSheet, [
-    ['Agnieszka Opiekun', 'agnieszka.opiekun@example.com', 'pracownik'],
-    ['Tomasz Opiekun', 'tomasz.opiekun@example.com', 'pracownik'],
-    ['Monika Manager', 'monika.manager@example.com', 'manager'],
+    ['Agnieszka Opiekun', 'agnieszka.opiekun@example.com', 'pracownik', true],
+    ['Tomasz Opiekun', 'tomasz.opiekun@example.com', 'pracownik', true],
+    ['Monika Manager', 'monika.manager@example.com', 'manager', true],
   ]);
 
   const today = normalizeDate_(new Date());
@@ -206,6 +206,10 @@ function applyDataHints_() {
   assignmentsSheet
     .getRange('B1')
     .setNote('Pusty pracownik = automatyczna rotacja miedzy wszystkimi pracownikami.');
+  const employeesSheet = getSheetOrThrow_(SHEET_NAMES.EMPLOYEES);
+  employeesSheet
+    .getRange('D1')
+    .setNote('Zaznacz, jesli pracownik ma byc uwzgledniany przy rozdziale zadan (rotacja).');
   tasksSheet
     .getRange('D1')
     .setNote('Wybierz pracownika z listy (slownik z arkusza Pracownicy).');
@@ -267,6 +271,13 @@ function applyDataValidation_() {
     .setHelpText('Wybierz role: pracownik lub manager.')
     .build();
   employeesSheet.getRange(2, 3, employeeRows, 1).setDataValidation(roleRule);
+
+  const aktywnyRule = SpreadsheetApp.newDataValidation()
+    .requireCheckbox()
+    .setAllowInvalid(false)
+    .setHelpText('Zaznacz, jesli pracownik ma byc uwzgledniany przy rozdziale zadan (rotacja).')
+    .build();
+  employeesSheet.getRange(2, 4, employeeRows, 1).setDataValidation(aktywnyRule);
 
   const clientNameRange = clientsSheet.getRange(2, 1, clientRows, 1);
   const procedureNameRange = proceduresSheet.getRange(2, 1, procedureRows, 1);
@@ -379,21 +390,27 @@ function migrateIdBasedModelToNameModel_() {
 
   const migratedEmployees = employeesSnapshot.rows
     .map((row) => {
-      const isActive = toBoolean_(
+      const employeeName = getNamedValue_(
+        row,
+        employeesSnapshot.indices,
+        'pracownik',
+        'employee_id'
+      );
+      if (!normalizeText_(employeeName)) {
+        return null;
+      }
+      const aktywny = toBoolean_(
         getNamedValue_(row, employeesSnapshot.indices, 'aktywny', '', true),
         true
       );
-      if (!isActive) {
-        return null;
-      }
       return [
-        getNamedValue_(row, employeesSnapshot.indices, 'pracownik', 'employee_id'),
+        employeeName,
         getNamedValue_(row, employeesSnapshot.indices, 'email'),
         getNamedValue_(row, employeesSnapshot.indices, 'rola'),
+        aktywny,
       ];
     })
-    .filter(Boolean)
-    .filter((row) => normalizeText_(row[0]));
+    .filter(Boolean);
 
   const migratedClientProcedures = clientProceduresSnapshot.rows
     .map((row) => {

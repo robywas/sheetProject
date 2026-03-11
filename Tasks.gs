@@ -402,6 +402,9 @@ function getAssignableEmployeeNames_(employeeRows) {
     if (!employeeName) {
       return;
     }
+    if (!toBoolean_(row.aktywny, true)) {
+      return;
+    }
     const key = normalizeLookupKey_(employeeName);
     if (!seenAll[key]) {
       allNames.push(employeeName);
