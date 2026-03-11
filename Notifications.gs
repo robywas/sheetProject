@@ -94,21 +94,27 @@ function getTasksDueTodayOrOverdueByEmployee_(todayKey) {
 }
 
 function getEmployeeEmailMap_() {
-  const rows = getObjectRows_(SHEET_NAMES.EMPLOYEES);
+  const sheet = getSheetOrThrow_(SHEET_NAMES.EMPLOYEES);
+  const values = sheet.getDataRange().getValues();
   const map = {};
-  rows.forEach((row) => {
-    const name = normalizeText_(row.pracownik || row.employee_id);
-    const email = getEmailFromEmployeeRow_(row);
-    if (name && email) {
+  if (values.length < 2) {
+    return map;
+  }
+  const headerRow = values[0].map((h) => String(h || '').trim());
+  const colPracownik = headerRow.findIndex((h) => /pracownik/i.test(h));
+  const colEmail = headerRow.findIndex((h) => /^e-?mail$/i.test(h));
+  if (colPracownik === -1 || colEmail === -1) {
+    return map;
+  }
+  for (let r = 1; r < values.length; r += 1) {
+    const row = values[r];
+    const name = normalizeText_(row[colPracownik]);
+    const email = normalizeText_(row[colEmail]);
+    if (name && email && email.indexOf('@') !== -1) {
       map[employeeLookupKey_(name)] = email;
     }
-  });
+  }
   return map;
-}
-
-function getEmailFromEmployeeRow_(row) {
-  const v = row.email || row['e-mail'] || row['E-mail'] || row.Email;
-  return normalizeText_(v);
 }
 
 function employeeLookupKey_(name) {
