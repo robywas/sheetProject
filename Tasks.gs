@@ -754,7 +754,7 @@ function sortTasksByStatusAndDueDesc_() {
       return leftDone ? 1 : -1;
     }
 
-    const dueDiff = toTimestamp(right[4]) - toTimestamp(left[4]);
+    const dueDiff = toTimestamp(left[4]) - toTimestamp(right[4]);
     if (dueDiff !== 0) {
       return dueDiff;
     }

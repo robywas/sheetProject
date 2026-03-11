@@ -5,21 +5,24 @@
 
 function sendTaskReminderEmails() {
   const today = normalizeDate_(new Date());
-  const tasksByEmployee = getTasksDueTodayOrOverdueByEmployee_(today);
+  const todayKey = formatDateKey_(today);
+  const tasksByEmployee = getTasksDueTodayOrOverdueByEmployee_(todayKey);
   const employeeToEmail = getEmployeeEmailMap_();
 
   let sentCount = 0;
   let skipCount = 0;
+  let totalTasks = 0;
 
   Object.keys(tasksByEmployee).forEach((employeeName) => {
+    const tasks = tasksByEmployee[employeeName];
+    totalTasks += tasks.length;
     const email = employeeToEmail[normalizeLookupKey_(employeeName)];
     if (!email) {
       skipCount += 1;
       return;
     }
-    const tasks = tasksByEmployee[employeeName];
-    const overdue = tasks.filter((t) => t.dueDate < today);
-    const dueToday = tasks.filter((t) => t.dueDate.getTime() === today.getTime());
+    const overdue = tasks.filter((t) => formatDateKey_(t.dueDate) < todayKey);
+    const dueToday = tasks.filter((t) => formatDateKey_(t.dueDate) === todayKey);
 
     const subject =
       'Procedury: zadania na dzis / opoznione (' +
@@ -32,18 +35,20 @@ function sendTaskReminderEmails() {
       MailApp.sendEmail(email, subject, body);
       sentCount += 1;
     } catch (err) {
-      // Pominieto (np. nieprawidlowy adres) – mozna zalogowac err
+      skipCount += 1;
     }
   });
 
-  SpreadsheetApp.getActiveSpreadsheet().toast(
-    'Wyslano ' + sentCount + ' wiadomosci.' + (skipCount > 0 ? ' Pominieto ' + skipCount + ' (brak email).' : ''),
-    'Powiadomienia',
-    5
-  );
+  let msg = 'Wyslano ' + sentCount + ' wiadomosci.';
+  if (totalTasks === 0) {
+    msg = 'Brak zadan na dzis ani opoznionych (otwartych).';
+  } else if (skipCount > 0) {
+    msg += ' Pominieto ' + skipCount + ' (brak email w Pracownicy).';
+  }
+  SpreadsheetApp.getActiveSpreadsheet().toast(msg, 'Powiadomienia', 5);
 }
 
-function getTasksDueTodayOrOverdueByEmployee_(today) {
+function getTasksDueTodayOrOverdueByEmployee_(todayKey) {
   const taskRows = getObjectRows_(SHEET_NAMES.TASKS);
   const byEmployee = {};
 
@@ -53,7 +58,11 @@ function getTasksDueTodayOrOverdueByEmployee_(today) {
       return;
     }
     const dueDate = toDate_(row.due_date);
-    if (!dueDate || dueDate > today) {
+    if (!dueDate) {
+      return;
+    }
+    const dueKey = formatDateKey_(dueDate);
+    if (dueKey > todayKey) {
       return;
     }
 
