@@ -52,6 +52,11 @@ function setupWorkbook() {
   } catch (error) {
     // Dashboard moze byc odswiezony pozniej z menu.
   }
+  try {
+    refreshClientProceduresControl();
+  } catch (error) {
+    // Kontrola moze byc odswiezona pozniej z menu.
+  }
   SpreadsheetApp.getActiveSpreadsheet().toast(
     'Struktura arkusza jest gotowa (build: 2026-03-05d).',
     'Procedury',
@@ -195,6 +200,9 @@ function applyDataHints_() {
   clientProceduresSheet
     .getRange('D1')
     .setNote('Uwagi do konkretnego powiazania klient-procedura. Pokazywane w Moje_zadania.');
+  clientProceduresSheet
+    .getRange('E1')
+    .setNote('Kontrola: OK / Nieprzypisane / Brak zadan. Odswiez z menu Procedury.');
   assignmentsSheet
     .getRange('B1')
     .setNote('Pusty pracownik = automatyczna rotacja miedzy wszystkimi pracownikami.');

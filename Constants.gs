@@ -25,6 +25,7 @@ const HEADERS = Object.freeze({
     'procedura',
     'data_start',
     'uwagi',
+    'kontrola',
   ],
   ASSIGNMENTS: [
     'klient',

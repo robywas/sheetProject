@@ -221,6 +221,12 @@ function generateRecurringTasks(daysAhead) {
     sortTasksByStatusAndDueDesc_();
   }
 
+  try {
+    refreshClientProceduresControl();
+  } catch (error) {
+    // Kontrola nie powinna blokowac generowania.
+  }
+
   return {
     createdCount: newRows.length,
     reassignedCount: reassignmentUpdates.length,

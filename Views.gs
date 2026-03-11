@@ -88,6 +88,57 @@ function refreshMyTasksViewForEmployeeName_(employeeName) {
 
 }
 
+function refreshClientProceduresControl() {
+  const sheet = getSheetOrThrow_(SHEET_NAMES.CLIENT_PROCEDURES);
+  const relationRows = getObjectRows_(SHEET_NAMES.CLIENT_PROCEDURES).filter(
+    (row) =>
+      normalizeText_(row.klient || row.client_id) &&
+      normalizeText_(row.procedura || row.procedure_id)
+  );
+  if (relationRows.length === 0) {
+    return;
+  }
+
+  const today = normalizeDate_(new Date());
+  const horizon = new Date(today.getTime());
+  horizon.setDate(horizon.getDate() + DEFAULT_GENERATION_DAYS);
+
+  const allTasks = getObjectRows_(SHEET_NAMES.TASKS).map((row) => ({
+    klient: normalizeText_(row.klient || row.client_id),
+    procedura: normalizeText_(row.procedura || row.procedure_id),
+    due_date: toDate_(row.due_date),
+    pracownik: normalizeText_(row.pracownik || row.employee_id),
+  }));
+
+  const statuses = relationRows.map((row) => {
+    const clientKey = normalizeLookupKey_(row.klient || row.client_id);
+    const procedureKey = normalizeLookupKey_(row.procedura || row.procedure_id);
+    const tasksInWindow = allTasks.filter(
+      (t) =>
+        normalizeLookupKey_(t.klient) === clientKey &&
+        normalizeLookupKey_(t.procedura) === procedureKey &&
+        t.due_date &&
+        t.due_date >= today &&
+        t.due_date <= horizon
+    );
+    if (tasksInWindow.length === 0) {
+      return ['Brak zadań'];
+    }
+    const unassigned = tasksInWindow.some((t) => !t.pracownik);
+    return [unassigned ? 'Nieprzypisane' : 'OK'];
+  });
+
+  const startRow = 2;
+  const endRow = startRow + statuses.length - 1;
+  ensureSheetSize_(sheet, endRow, HEADERS.CLIENT_PROCEDURES.length);
+  sheet.getRange(startRow, 5, endRow, 5).setValues(statuses);
+  SpreadsheetApp.getActiveSpreadsheet().toast(
+    'Kontrola Klienci_Procedury zaktualizowana.',
+    'Procedury',
+    3
+  );
+}
+
 function buildClientProcedureRelationKey_(clientName, procedureName) {
   return (
     normalizeLookupKey_(clientName) + '|' + normalizeLookupKey_(procedureName)

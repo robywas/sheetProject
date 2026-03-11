@@ -7,6 +7,7 @@ function onOpen() {
     .addItem('3) Wygeneruj zadania (30 dni)', 'generateTasks30Days')
     .addItem('4) Odswiez moje zadania', 'refreshMyTasksView')
     .addItem('5) Odswiez dashboard managera', 'refreshManagerDashboard')
+    .addItem('6) Odswiez kontrole (Klienci_Procedury)', 'refreshClientProceduresControl')
     .addSeparator()
     .addItem('Panel pracownika', 'openWorkerSidebar')
     .addItem('Panel managera', 'openManagerSidebar')
