@@ -130,7 +130,7 @@ function refreshClientProceduresControl() {
 
   const startRow = 2;
   ensureSheetSize_(sheet, startRow + statuses.length - 1, HEADERS.CLIENT_PROCEDURES.length);
-  sheet.getRange(startRow, 5, statuses.length, 5).setValues(statuses);
+  sheet.getRange(startRow, 5, statuses.length, 1).setValues(statuses);
   SpreadsheetApp.getActiveSpreadsheet().toast(
     'Kontrola Klienci_Procedury zaktualizowana.',
     'Procedury',
