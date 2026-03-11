@@ -89,6 +89,9 @@ const MY_TASKS_COL = Object.freeze({
   NOTE: 7,
 });
 
+/** Id wersji (np. short commit) – zmien przy deployu, zeby potwierdzic clasp push. */
+const DEPLOY_ID = 'd6370b2';
+
 const DEFAULT_GENERATION_DAYS = 30;
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 const SCHEDULE_LAST_DAY_TOKEN = 'OSTATNI';

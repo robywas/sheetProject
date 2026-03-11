@@ -58,7 +58,7 @@ function setupWorkbook() {
     // Kontrola moze byc odswiezona pozniej z menu.
   }
   SpreadsheetApp.getActiveSpreadsheet().toast(
-    'Struktura arkusza jest gotowa (build: 2026-03-05d).',
+    'Struktura arkusza jest gotowa (build: ' + DEPLOY_ID + ').',
     'Procedury',
     5
   );
