@@ -216,7 +216,7 @@ function generateRecurringTasks(daysAhead) {
   }
 
   if (newRows.length > 0 || reassignmentUpdates.length > 0) {
-    sortTasksByDueDateAsc_();
+    sortTasksByStatusAndDueDesc_();
   }
 
   return {
@@ -258,7 +258,7 @@ function markTaskAsDone_(taskId) {
 
   sheet.getRange(row, 6).setValue(STATUS.DONE);
   sheet.getRange(row, 8).setValue(new Date());
-  sortTasksByDueDateAsc_();
+  sortTasksByStatusAndDueDesc_();
   return completedTask;
 }
 
@@ -305,7 +305,7 @@ function updateTaskStatus_(taskId, newStatus) {
   } else {
     sheet.getRange(rowNumber, 8).clearContent();
   }
-  sortTasksByDueDateAsc_();
+  sortTasksByStatusAndDueDesc_();
   return true;
 }
 
@@ -696,7 +696,7 @@ function createNextTaskFromCompleted_(completedTask) {
   taskSheet
     .getRange(taskSheet.getLastRow() + 1, 1, 1, HEADERS.TASKS.length)
     .setValues([row]);
-  sortTasksByDueDateAsc_();
+  sortTasksByStatusAndDueDesc_();
   return true;
 }
 
@@ -730,7 +730,7 @@ function getNextDueDateForProcedure_(dueDate, procedureConfig) {
   );
 }
 
-function sortTasksByDueDateAsc_() {
+function sortTasksByStatusAndDueDesc_() {
   const taskSheet = getSheetOrThrow_(SHEET_NAMES.TASKS);
   const lastRow = taskSheet.getLastRow();
   if (lastRow < 2) {
@@ -745,11 +745,17 @@ function sortTasksByDueDateAsc_() {
 
   const toTimestamp = (value) => {
     const dateValue = toDate_(value);
-    return dateValue ? dateValue.getTime() : Number.MAX_SAFE_INTEGER;
+    return dateValue ? dateValue.getTime() : -1;
   };
 
   rows.sort((left, right) => {
-    const dueDiff = toTimestamp(left[4]) - toTimestamp(right[4]);
+    const leftDone = normalizeText_(left[5]).toUpperCase() === STATUS.DONE;
+    const rightDone = normalizeText_(right[5]).toUpperCase() === STATUS.DONE;
+    if (leftDone !== rightDone) {
+      return leftDone ? 1 : -1;
+    }
+
+    const dueDiff = toTimestamp(right[4]) - toTimestamp(left[4]);
     if (dueDiff !== 0) {
       return dueDiff;
     }
@@ -763,6 +769,28 @@ function sortTasksByDueDateAsc_() {
   });
 
   range.setValues(rows);
+  highlightLateCompletedTasks_(taskSheet, rows);
+}
+
+function highlightLateCompletedTasks_(taskSheet, rows) {
+  if (!rows || rows.length === 0) {
+    return;
+  }
+
+  const statusBackgrounds = rows.map((row) => {
+    const status = normalizeText_(row[5]).toUpperCase();
+    const dueDate = toDate_(row[4]);
+    const completedAt = toDate_(row[7]);
+    const isLateDone =
+      status === STATUS.DONE &&
+      dueDate &&
+      completedAt &&
+      completedAt.getTime() > dueDate.getTime();
+
+    return [isLateDone ? '#fde7e9' : ''];
+  });
+
+  taskSheet.getRange(2, 6, rows.length, 1).setBackgrounds(statusBackgrounds);
 }
 
 function buildNameMapByKey_(rows, fieldCandidates) {
@@ -797,7 +825,7 @@ function onEdit(e) {
   if (editedSheetName === SHEET_NAMES.TASKS && e.range.getRow() > 1) {
     const editedColumn = e.range.getColumn();
     if (editedColumn === 5) {
-      sortTasksByDueDateAsc_();
+      sortTasksByStatusAndDueDesc_();
       return;
     }
     if (editedColumn === 4) {
