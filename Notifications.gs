@@ -12,6 +12,7 @@ function sendTaskReminderEmails() {
   let sentCount = 0;
   let skipCount = 0;
   let totalTasks = 0;
+  const skippedKeys = [];
 
   Object.keys(tasksByEmployee).forEach((employeeName) => {
     const tasks = tasksByEmployee[employeeName];
@@ -23,7 +24,7 @@ function sendTaskReminderEmails() {
       employeeToEmail[employeeName];
     if (!email) {
       skipCount += 1;
-      writeEmailDiagnostic_(employeeToEmail, tasksByEmployee, key, employeeName);
+      skippedKeys.push({ key, name: employeeName });
       return;
     }
     const overdue = tasks.filter((t) => formatDateKey_(t.dueDate) < todayKey);
@@ -49,8 +50,12 @@ function sendTaskReminderEmails() {
     msg = 'Brak zadan na dzis ani opoznionych (otwartych).';
   } else if (skipCount > 0) {
     msg += ' Pominieto ' + skipCount + ' (brak email w Pracownicy).';
+    const mapKeys = Object.keys(employeeToEmail).join(',') || '(pusta)';
+    const szukano = skippedKeys.map((s) => s.key + '="' + s.name + '"').join('; ');
+    writeEmailDiagnostic_(mapKeys, szukano);
+    msg += ' Mapa=[' + mapKeys + '] Szukano=[' + szukano + ']';
   }
-  SpreadsheetApp.getActiveSpreadsheet().toast(msg, 'Powiadomienia', 5);
+  SpreadsheetApp.getActiveSpreadsheet().toast(msg, 'Powiadomienia', 8);
 }
 
 function getTasksDueTodayOrOverdueByEmployee_(todayKey) {
@@ -142,22 +147,10 @@ function employeeLookupKey_(name) {
   return normalizeText_(name || '').toLowerCase().replace(/\s+/g, ' ').trim();
 }
 
-function writeEmailDiagnostic_(map, tasksByEmployee, searchedKey, searchedName) {
+function writeEmailDiagnostic_(mapKeys, szukano) {
   try {
     const sheet = getSheetOrThrow_(SHEET_NAMES.MANAGER_DASHBOARD);
-    const mapKeys = Object.keys(map).join(', ') || '(pusta)';
-    const taskNames = Object.keys(tasksByEmployee).join(', ') || '(brak)';
-    sheet.getRange('F1').setValue(
-      'Diagnoza email: Mapa klucze=[' +
-        mapKeys +
-        '] Szukany klucz="' +
-        searchedKey +
-        '" nazwa="' +
-        searchedName +
-        '" Pracownicy z zadan=[' +
-        taskNames +
-        ']'
-    );
+    sheet.getRange(1, 6).setValue('Diagnoza email: Mapa=[' + mapKeys + '] Szukano=[' + szukano + ']');
   } catch (e) {
     // ignoruj blad zapisu diagnostyki
   }
