@@ -147,7 +147,7 @@ function writeEmailDiagnostic_(map, tasksByEmployee, searchedKey, searchedName) 
     const sheet = getSheetOrThrow_(SHEET_NAMES.MANAGER_DASHBOARD);
     const mapKeys = Object.keys(map).join(', ') || '(pusta)';
     const taskNames = Object.keys(tasksByEmployee).join(', ') || '(brak)';
-    sheet.getRange('A1').setValue(
+    sheet.getRange('F1').setValue(
       'Diagnoza email: Mapa klucze=[' +
         mapKeys +
         '] Szukany klucz="' +
