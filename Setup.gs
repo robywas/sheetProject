@@ -261,6 +261,13 @@ function applyDataValidation_() {
   proceduresSheet.getRange(2, 6, procedureRows, 1).setDataValidation(positiveIntegerRule);
   assignmentsSheet.getRange(2, 5, assignmentRows, 1).setDataValidation(positiveIntegerRule);
 
+  const roleRule = SpreadsheetApp.newDataValidation()
+    .requireValueInList(ROLE_OPTIONS, true)
+    .setAllowInvalid(false)
+    .setHelpText('Wybierz role: pracownik lub manager.')
+    .build();
+  employeesSheet.getRange(2, 3, employeeRows, 1).setDataValidation(roleRule);
+
   const clientNameRange = clientsSheet.getRange(2, 1, clientRows, 1);
   const procedureNameRange = proceduresSheet.getRange(2, 1, procedureRows, 1);
   const employeeNameRange = employeesSheet.getRange(2, 1, employeeRows, 1);

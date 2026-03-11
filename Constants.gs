@@ -69,6 +69,8 @@ const SCHEDULE_MODE = Object.freeze({
   DAILY: 'DZIENNY',
 });
 
+const ROLE_OPTIONS = Object.freeze(['pracownik', 'manager']);
+
 const MANAGER_FILTER = Object.freeze({
   ALL: 'WSZYSTKIE',
   OPEN: 'OTWARTE',
