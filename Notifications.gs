@@ -49,11 +49,14 @@ function sendTaskReminderEmails() {
   if (totalTasks === 0) {
     msg = 'Brak zadan na dzis ani opoznionych (otwartych).';
   } else if (skipCount > 0) {
-    msg += ' Pominieto ' + skipCount + ' (brak email w Pracownicy).';
     const mapKeys = Object.keys(employeeToEmail).join(',') || '(pusta)';
     const szukano = skippedKeys.map((s) => s.key + '="' + s.name + '"').join('; ');
     writeEmailDiagnostic_(mapKeys, szukano);
-    msg += ' Mapa=[' + mapKeys + '] Szukano=[' + szukano + ']';
+    if (skippedKeys.length > 0) {
+      msg += ' Pominieto ' + skipCount + ' (brak email w Pracownicy). Mapa=[' + mapKeys + '] Szukano=[' + szukano + ']';
+    } else {
+      msg += ' Pominieto ' + skipCount + ' – wysylka nie powiodla sie. Sprawdz: uprawnienia Gmail (skrypt), adresy w Pracownicy, limit wysylki.';
+    }
   }
   SpreadsheetApp.getActiveSpreadsheet().toast(msg, 'Powiadomienia', 8);
 }
