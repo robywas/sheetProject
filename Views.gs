@@ -749,6 +749,11 @@ function resolveCurrentEmployee_() {
   };
 }
 
+function isCurrentUserManager_() {
+  const employee = resolveCurrentEmployee_();
+  return employee && normalizeLookupKey_(employee.role) === 'manager';
+}
+
 function getWorkerSummary() {
   const employee = resolveCurrentEmployee_();
   if (!employee) {

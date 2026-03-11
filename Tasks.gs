@@ -830,6 +830,15 @@ function onEdit(e) {
 
   const editedSheetName = sheet.getName();
   if (editedSheetName === SHEET_NAMES.TASKS && e.range.getRow() > 1) {
+    if (!isCurrentUserManager_()) {
+      e.range.setValue(e.oldValue !== undefined ? e.oldValue : '');
+      SpreadsheetApp.getActiveSpreadsheet().toast(
+        'Tylko manager moze edytowac arkusz Zadania. Uzyj Moje_zadania do zmiany statusu.',
+        'Uprawnienia',
+        5
+      );
+      return;
+    }
     const editedColumn = e.range.getColumn();
     if (editedColumn === 5) {
       sortTasksByStatusAndDueDesc_();
