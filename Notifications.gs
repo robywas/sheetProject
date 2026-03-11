@@ -13,6 +13,7 @@ function sendTaskReminderEmails() {
   let skipCount = 0;
   let totalTasks = 0;
   const skippedKeys = [];
+  let lastSendError = '';
 
   Object.keys(tasksByEmployee).forEach((employeeName) => {
     const tasks = tasksByEmployee[employeeName];
@@ -42,6 +43,7 @@ function sendTaskReminderEmails() {
       sentCount += 1;
     } catch (err) {
       skipCount += 1;
+      lastSendError = (err && (err.message || err.toString())) || String(err);
     }
   });
 
@@ -55,10 +57,16 @@ function sendTaskReminderEmails() {
     if (skippedKeys.length > 0) {
       msg += ' Pominieto ' + skipCount + ' (brak email w Pracownicy). Mapa=[' + mapKeys + '] Szukano=[' + szukano + ']';
     } else {
-      msg += ' Pominieto ' + skipCount + ' – wysylka nie powiodla sie. Sprawdz: uprawnienia Gmail (skrypt), adresy w Pracownicy, limit wysylki.';
+      msg += ' Pominieto ' + skipCount + ' – wysylka nie powiodla sie.';
+      if (lastSendError) {
+        msg += ' Blad: ' + lastSendError;
+        writeEmailDiagnostic_('sendError', lastSendError);
+      } else {
+        msg += ' Sprawdz uprawnienia Gmail (skrypt), adresy, limit.';
+      }
     }
   }
-  SpreadsheetApp.getActiveSpreadsheet().toast(msg, 'Powiadomienia', 8);
+  SpreadsheetApp.getActiveSpreadsheet().toast(msg, 'Powiadomienia', 10);
 }
 
 function getTasksDueTodayOrOverdueByEmployee_(todayKey) {
@@ -150,10 +158,14 @@ function employeeLookupKey_(name) {
   return normalizeText_(name || '').toLowerCase().replace(/\s+/g, ' ').trim();
 }
 
-function writeEmailDiagnostic_(mapKeys, szukano) {
+function writeEmailDiagnostic_(mapKeysOrType, szukanoOrError) {
   try {
     const sheet = getSheetOrThrow_(SHEET_NAMES.MANAGER_DASHBOARD);
-    sheet.getRange(1, 6).setValue('Diagnoza email: Mapa=[' + mapKeys + '] Szukano=[' + szukano + ']');
+    const text =
+      mapKeysOrType === 'sendError'
+        ? 'Diagnoza email (blad wysylki): ' + szukanoOrError
+        : 'Diagnoza email: Mapa=[' + mapKeysOrType + '] Szukano=[' + szukanoOrError + ']';
+    sheet.getRange(1, 6).setValue(text);
   } catch (e) {
     // ignoruj blad zapisu diagnostyki
   }
