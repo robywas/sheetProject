@@ -16,9 +16,14 @@ function sendTaskReminderEmails() {
   Object.keys(tasksByEmployee).forEach((employeeName) => {
     const tasks = tasksByEmployee[employeeName];
     totalTasks += tasks.length;
-    const email = employeeToEmail[employeeLookupKey_(employeeName)];
+    const key = employeeLookupKey_(employeeName);
+    const email =
+      employeeToEmail[key] ||
+      employeeToEmail[normalizeText_(employeeName)] ||
+      employeeToEmail[employeeName];
     if (!email) {
       skipCount += 1;
+      writeEmailDiagnostic_(employeeToEmail, tasksByEmployee, key, employeeName);
       return;
     }
     const overdue = tasks.filter((t) => formatDateKey_(t.dueDate) < todayKey);
@@ -49,26 +54,39 @@ function sendTaskReminderEmails() {
 }
 
 function getTasksDueTodayOrOverdueByEmployee_(todayKey) {
-  const taskRows = getObjectRows_(SHEET_NAMES.TASKS);
+  const sheet = getSheetOrThrow_(SHEET_NAMES.TASKS);
+  const values = sheet.getDataRange().getValues();
   const byEmployee = {};
+  if (values.length < 2) {
+    return {};
+  }
+  const headerRow = values[0].map((h) => String(h || '').trim());
+  const colStatus = headerRow.findIndex((h) => /status/i.test(h));
+  const colDue = headerRow.findIndex((h) => /due_date|termin/i.test(h));
+  const colPracownik = headerRow.findIndex((h) => /pracownik|employee/i.test(h));
+  const colKlient = headerRow.findIndex((h) => /klient|client/i.test(h));
+  const colProcedura = headerRow.findIndex((h) => /procedura|procedure/i.test(h));
+  if (colStatus === -1 || colDue === -1 || colPracownik === -1) {
+    return {};
+  }
 
-  taskRows.forEach((row) => {
-    const status = normalizeText_(row.status).toUpperCase();
+  for (let r = 1; r < values.length; r += 1) {
+    const row = values[r];
+    const status = normalizeText_(row[colStatus]).toUpperCase();
     if (status === STATUS.DONE) {
-      return;
+      continue;
     }
-    const dueDate = toDate_(row.due_date);
+    const dueDate = toDate_(row[colDue]);
     if (!dueDate) {
-      return;
+      continue;
     }
     const dueKey = formatDateKey_(dueDate);
     if (dueKey > todayKey) {
-      return;
+      continue;
     }
-
-    const employeeName = normalizeText_(row.pracownik || row.employee_id);
+    const employeeName = normalizeText_(row[colPracownik]);
     if (!employeeName) {
-      return;
+      continue;
     }
 
     const key = employeeLookupKey_(employeeName);
@@ -76,14 +94,13 @@ function getTasksDueTodayOrOverdueByEmployee_(todayKey) {
       byEmployee[key] = [];
     }
     byEmployee[key].push({
-      clientName: normalizeText_(row.klient || row.client_id),
-      procedureName: normalizeText_(row.procedura || row.procedure_id),
+      clientName: colKlient >= 0 ? normalizeText_(row[colKlient]) : '',
+      procedureName: colProcedura >= 0 ? normalizeText_(row[colProcedura]) : '',
       dueDate,
       employeeName,
     });
   });
 
-  // Zwracamy po nazwie (pierwsza z listy), zeby w wiadomosci bylo czytelne
   const byEmployeeName = {};
   Object.keys(byEmployee).forEach((key) => {
     const list = byEmployee[key];
@@ -111,7 +128,11 @@ function getEmployeeEmailMap_() {
     const name = normalizeText_(row[colPracownik]);
     const email = normalizeText_(row[colEmail]);
     if (name && email && email.indexOf('@') !== -1) {
-      map[employeeLookupKey_(name)] = email;
+      const key = employeeLookupKey_(name);
+      map[key] = email;
+      if (key !== name) {
+        map[name] = email;
+      }
     }
   }
   return map;
@@ -119,6 +140,27 @@ function getEmployeeEmailMap_() {
 
 function employeeLookupKey_(name) {
   return normalizeText_(name || '').toLowerCase().replace(/\s+/g, ' ').trim();
+}
+
+function writeEmailDiagnostic_(map, tasksByEmployee, searchedKey, searchedName) {
+  try {
+    const sheet = getSheetOrThrow_(SHEET_NAMES.MANAGER_DASHBOARD);
+    const mapKeys = Object.keys(map).join(', ') || '(pusta)';
+    const taskNames = Object.keys(tasksByEmployee).join(', ') || '(brak)';
+    sheet.getRange('A1').setValue(
+      'Diagnoza email: Mapa klucze=[' +
+        mapKeys +
+        '] Szukany klucz="' +
+        searchedKey +
+        '" nazwa="' +
+        searchedName +
+        '" Pracownicy z zadan=[' +
+        taskNames +
+        ']'
+    );
+  } catch (e) {
+    // ignoruj blad zapisu diagnostyki
+  }
 }
 
 function buildReminderEmailBody_(overdue, dueToday, today) {
