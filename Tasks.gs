@@ -203,10 +203,9 @@ function generateRecurringTasks(daysAhead) {
   if (newRows.length > 0) {
     const taskSheet = getSheetOrThrow_(SHEET_NAMES.TASKS);
     const startRow = taskSheet.getLastRow() + 1;
-    const endRow = startRow + newRows.length - 1;
-    ensureSheetSize_(taskSheet, endRow, HEADERS.TASKS.length);
+    ensureSheetSize_(taskSheet, startRow + newRows.length - 1, HEADERS.TASKS.length);
     taskSheet
-      .getRange(startRow, 1, endRow, HEADERS.TASKS.length)
+      .getRange(startRow, 1, newRows.length, HEADERS.TASKS.length)
       .setValues(newRows);
   }
 
