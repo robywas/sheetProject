@@ -281,12 +281,7 @@ function applyDataValidation_() {
 
   const clientNameRange = clientsSheet.getRange(2, 1, clientRows, 1);
   const procedureNameRange = proceduresSheet.getRange(2, 1, procedureRows, 1);
-  const employeeNameRange = employeesSheet.getRange(
-    2,
-    1,
-    Math.max(employeeRows + 50, 100),
-    1
-  );
+  const employeeNameRange = employeesSheet.getRange(2, 1, employeeRows, 1);
 
   const clientNameRule = SpreadsheetApp.newDataValidation()
     .requireValueInRange(clientNameRange, true)
