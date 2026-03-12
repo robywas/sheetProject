@@ -753,18 +753,6 @@ function isCurrentUserManager_() {
   return employee && normalizeLookupKey_(employee.role) === 'manager';
 }
 
-/** Okresla, czy uzytkownik o danym emailu ma role managera (do uzycia w triggerze, gdy kontekst to instalator). */
-function isManagerByEmail_(email) {
-  if (!normalizeText_(email)) {
-    return false;
-  }
-  const employees = getObjectRows_(SHEET_NAMES.EMPLOYEES);
-  const matched = employees.find(
-    (row) => normalizeText_(row.email).toLowerCase() === normalizeText_(email).toLowerCase()
-  );
-  return matched && normalizeLookupKey_(matched.rola) === 'manager';
-}
-
 function getWorkerSummary() {
   const employee = resolveCurrentEmployee_();
   if (!employee) {
@@ -837,14 +825,11 @@ function getManagerSummary() {
 /**
  * Ukrywa arkusze z listy SHEETS_VISIBLE_ONLY_TO_MANAGER dla uzytkownikow bez roli manager.
  * Dla managera wszystkie arkusze sa widoczne. Wywolywane przy onOpen.
- * openerEmail – opcjonalny email osoby otwierajacej (gdy podany, uzywany zamiast Session – do triggera instalowalnego).
  * Uwaga: osoby z uprawnieniami edycji moga odsłonic arkusze recznie (Widok / Ukryte arkusze) – to ulatwienie, nie zabezpieczenie.
  */
-function applySheetVisibilityByRole_(openerEmail) {
+function applySheetVisibilityByRole_() {
   const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
-  const isManager = normalizeText_(openerEmail)
-    ? isManagerByEmail_(openerEmail)
-    : isCurrentUserManager_();
+  const isManager = isCurrentUserManager_();
   const managerOnlySet = new Set(SHEETS_VISIBLE_ONLY_TO_MANAGER);
 
   spreadsheet.getSheets().forEach((sheet) => {
