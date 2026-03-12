@@ -22,6 +22,36 @@ function onInstall() {
   onOpen();
 }
 
+/**
+ * Prosty trigger: przy zmianie zaznaczenia (w tym przejsciu na zakladke). Gdy uzytkownik jest na Moje_zadania
+ * i minelo co najmniej MY_TASKS_AUTO_REFRESH_MINUTES od ostatniego odswiezenia – odswieza widok (najmniej inwazyjnie).
+ */
+function onSelectionChange(e) {
+  if (!e || !e.range) {
+    return;
+  }
+  const sheetName = e.range.getSheet().getName();
+  if (sheetName !== SHEET_NAMES.MY_TASKS) {
+    return;
+  }
+  const props = PropertiesService.getDocumentProperties();
+  const now = Date.now();
+  const lastRefresh = parseInt(props.getProperty('myTasksLastRefresh') || '0', 10);
+  const lastUser = props.getProperty('myTasksLastUser') || '';
+  const currentUser = getCurrentUserEmail_();
+  const intervalMs = MY_TASKS_AUTO_REFRESH_MINUTES * 60 * 1000;
+  if (lastUser === currentUser && now - lastRefresh < intervalMs) {
+    return;
+  }
+  try {
+    refreshMyTasksView();
+  } catch (err) {
+    return;
+  }
+  props.setProperty('myTasksLastRefresh', String(now));
+  props.setProperty('myTasksLastUser', currentUser);
+}
+
 function refreshAllViews() {
   refreshManagerDashboard();
   try {
