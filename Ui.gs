@@ -12,7 +12,6 @@ function onOpen() {
     .addItem('6) Odswiez kontrole (Klienci_Procedury)', 'refreshClientProceduresControl')
     .addItem('7) Wyslij powiadomienia email (termin / opoznienia)', 'sendTaskReminderEmails')
     .addItem('8) Odswiez Moje_zadania wszystkich pracownikow (manager)', 'refreshAllMyTasksViewsForManager')
-    .addItem('9) Pokaz wszystkie arkusze', 'showAllSheets')
     .addSeparator()
     .addItem('Panel pracownika', 'openWorkerSidebar')
     .addItem('Panel managera', 'openManagerSidebar')
@@ -44,15 +43,4 @@ function openManagerSidebar() {
     .setTitle('Panel managera')
     .setWidth(340);
   SpreadsheetApp.getUi().showSidebar(html);
-}
-
-/** Odkrywa wszystkie arkusze (przywraca widok po otwarciu pliku przez pracownika w innej sesji). */
-function showAllSheets() {
-  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
-  spreadsheet.getSheets().forEach((sheet) => {
-    try {
-      sheet.showSheet();
-    } catch (e) {}
-  });
-  SpreadsheetApp.getActiveSpreadsheet().toast('Wszystkie zakładki są widoczne.', 'Procedury', 3);
 }
