@@ -656,7 +656,11 @@ function getMonthlyDueDatesBetween_(
     if (!dueDate || dueDate < relationStartDate || dueDate < windowStart || dueDate > horizon) {
       return;
     }
-    dueDates.push(dueDate);
+    const workingDate = getFirstWorkingDayOnOrAfter_(dueDate);
+    if (workingDate > horizon) {
+      return;
+    }
+    dueDates.push(workingDate);
   });
 
   return dueDates;
@@ -678,13 +682,21 @@ function getDailyDueDatesBetween_(windowStart, horizon, relationStartDate, inter
     firstDueDate = normalizeDate_(firstDueDate);
   }
 
+  const seenKeys = new Set();
   for (
     let cursor = new Date(firstDueDate.getTime());
     cursor <= horizon;
     cursor = new Date(cursor.getFullYear(), cursor.getMonth(), cursor.getDate() + safeInterval)
   ) {
     if (cursor >= windowStart) {
-      dueDates.push(normalizeDate_(cursor));
+      const workingDate = getFirstWorkingDayOnOrAfter_(normalizeDate_(cursor));
+      if (workingDate <= horizon) {
+        const key = formatDateKey_(workingDate);
+        if (!seenKeys.has(key)) {
+          seenKeys.add(key);
+          dueDates.push(workingDate);
+        }
+      }
     }
   }
 
@@ -808,7 +820,7 @@ function getNextDueDateForProcedure_(dueDate, procedureConfig) {
   if (procedureConfig.scheduleMode === SCHEDULE_MODE.DAILY) {
     const nextDailyDate = new Date(normalizedDueDate.getTime());
     nextDailyDate.setDate(nextDailyDate.getDate() + safeInterval);
-    return normalizeDate_(nextDailyDate);
+    return getFirstWorkingDayOnOrAfter_(normalizeDate_(nextDailyDate));
   }
 
   if (!procedureConfig.schedule) {
@@ -820,11 +832,12 @@ function getNextDueDateForProcedure_(dueDate, procedureConfig) {
     normalizedDueDate.getMonth() + safeInterval,
     1
   );
-  return getDueDateForMonth_(
+  const monthDue = getDueDateForMonth_(
     nextMonth.getFullYear(),
     nextMonth.getMonth(),
     procedureConfig.schedule
   );
+  return monthDue ? getFirstWorkingDayOnOrAfter_(monthDue) : null;
 }
 
 function sortTasksByStatusAndDueDesc_() {

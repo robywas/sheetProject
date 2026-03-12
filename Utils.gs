@@ -99,6 +99,78 @@ function getMonthKey_(date) {
   return y + '-' + m;
 }
 
+/** Wielkanoc (niedziela) dla danego roku – kalendarz gregorianski (algorytm Oudin). */
+function getEasterSunday_(year) {
+  const Y = year;
+  const C = Math.floor(Y / 100);
+  const N = Y - 19 * Math.floor(Y / 19);
+  const K = Math.floor((C - 17) / 25);
+  let I = C - Math.floor(C / 4) - Math.floor((C - K) / 3) + 19 * N + 15;
+  I = I - 30 * Math.floor(I / 30);
+  I =
+    I -
+    Math.floor(I / 28) *
+      (1 -
+        Math.floor(I / 28) *
+          Math.floor(29 / (I + 1)) *
+          Math.floor((21 - N) / 11));
+  let J = Y + Math.floor(Y / 4) + I + 2 - C + Math.floor(C / 4);
+  J = J - 7 * Math.floor(J / 7);
+  const L = I - J;
+  const M = 3 + Math.floor((L + 40) / 44);
+  const D = L + 28 - 31 * Math.floor(M / 4);
+  return normalizeDate_(new Date(Y, M - 1, D));
+}
+
+/** Dni wolne (swieta) w Polsce dla danego roku – Set kluczy YYYY-MM-DD. */
+function getPolishHolidaysForYear_(year) {
+  const set = new Set();
+  const add = (month, day) => {
+    const d = new Date(year, month - 1, day);
+    set.add(formatDateKey_(d));
+  };
+  add(1, 1);
+  add(1, 6);
+  const easter = getEasterSunday_(year);
+  add(easter.getMonth() + 1, easter.getDate());
+  const easterMonday = new Date(easter.getTime());
+  easterMonday.setDate(easterMonday.getDate() + 1);
+  set.add(formatDateKey_(easterMonday));
+  const corpusChristi = new Date(easter.getTime());
+  corpusChristi.setDate(corpusChristi.getDate() + 60);
+  set.add(formatDateKey_(corpusChristi));
+  add(5, 1);
+  add(5, 3);
+  add(8, 15);
+  add(11, 1);
+  add(11, 11);
+  add(12, 25);
+  add(12, 26);
+  return set;
+}
+
+/** Czy dzien jest roboczy (nie sobota, nie niedziela, nie swieto). */
+function isWorkingDay_(date) {
+  const d = normalizeDate_(date);
+  const day = d.getDay();
+  if (day === 0 || day === 6) {
+    return false;
+  }
+  const year = d.getFullYear();
+  const holidays = getPolishHolidaysForYear_(year);
+  return !holidays.has(formatDateKey_(d));
+}
+
+/** Pierwszy dzien roboczy w dniu podanym lub po nim. */
+function getFirstWorkingDayOnOrAfter_(date) {
+  let d = normalizeDate_(date);
+  while (!isWorkingDay_(d)) {
+    d.setDate(d.getDate() + 1);
+    d = normalizeDate_(d);
+  }
+  return d;
+}
+
 function buildTaskKey_(clientName, procedureName, dueDate) {
   return [
     normalizeText_(clientName),
