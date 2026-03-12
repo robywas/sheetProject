@@ -177,6 +177,8 @@ function applyFormatting_() {
 
   const myTasksSheet = getSheetOrThrow_(SHEET_NAMES.MY_TASKS);
   myTasksSheet.getRange('B:B').setNumberFormat('yyyy-mm-dd');
+
+  applyStandardRowLayout_();
 }
 
 function applyDataHints_() {
@@ -320,6 +322,19 @@ function migrateIdBasedModelToNameModel_() {
   const clientProceduresSnapshot = readSheetSnapshot_(SHEET_NAMES.CLIENT_PROCEDURES);
   const assignmentsSnapshot = readSheetSnapshot_(SHEET_NAMES.ASSIGNMENTS);
   const tasksSnapshot = readSheetSnapshot_(SHEET_NAMES.TASKS);
+
+  // Migracja czyści arkusze (sheet.clear), więc uruchamiamy ją tylko jeśli wykryjemy stary model.
+  // Jeśli nagłówki już są w docelowym kształcie, pomijamy migrację, żeby nie nadpisywać formatowania.
+  if (
+    isSheetAlreadyInTargetModel_(proceduresSnapshot, HEADERS.PROCEDURES) &&
+    isSheetAlreadyInTargetModel_(clientsSnapshot, HEADERS.CLIENTS) &&
+    isSheetAlreadyInTargetModel_(employeesSnapshot, HEADERS.EMPLOYEES) &&
+    isSheetAlreadyInTargetModel_(clientProceduresSnapshot, HEADERS.CLIENT_PROCEDURES) &&
+    isSheetAlreadyInTargetModel_(assignmentsSnapshot, HEADERS.ASSIGNMENTS) &&
+    isSheetAlreadyInTargetModel_(tasksSnapshot, HEADERS.TASKS)
+  ) {
+    return;
+  }
 
   const clientIdToName = buildIdToNameMap_(clientsSnapshot, 'client_id', 'klient');
   const procedureIdToName = buildIdToNameMap_(proceduresSnapshot, 'procedure_id', 'procedura');
@@ -523,6 +538,54 @@ function migrateIdBasedModelToNameModel_() {
   );
   writeMigratedSheet_(assignmentsSnapshot.sheet, HEADERS.ASSIGNMENTS, migratedAssignments);
   writeMigratedSheet_(tasksSnapshot.sheet, HEADERS.TASKS, migratedTasks);
+}
+
+function isSheetAlreadyInTargetModel_(snapshot, targetHeaders) {
+  if (!snapshot || !snapshot.headers || !targetHeaders) {
+    return false;
+  }
+  if (snapshot.headers.length < targetHeaders.length) {
+    return false;
+  }
+  for (let i = 0; i < targetHeaders.length; i += 1) {
+    if (normalizeLookupKey_(snapshot.headers[i]) !== normalizeLookupKey_(targetHeaders[i])) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function applyStandardRowLayout_() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheetNames = [
+    SHEET_NAMES.PROCEDURES,
+    SHEET_NAMES.CLIENTS,
+    SHEET_NAMES.EMPLOYEES,
+    SHEET_NAMES.CLIENT_PROCEDURES,
+    SHEET_NAMES.ASSIGNMENTS,
+    SHEET_NAMES.TASKS,
+    SHEET_NAMES.MY_TASKS,
+    SHEET_NAMES.MANAGER_DASHBOARD,
+  ];
+
+  sheetNames.forEach((name) => {
+    const sheet = ss.getSheetByName(name);
+    if (!sheet) {
+      return;
+    }
+    const rowCount = Math.max(1, toNumber_(sheet.getMaxRows(), 1));
+    const colCount = Math.max(1, toNumber_(sheet.getMaxColumns(), 1));
+    try {
+      sheet.setRowHeights(1, rowCount, 25);
+    } catch (error) {
+      // Ustawienie wysokosci jest opcjonalne.
+    }
+    try {
+      sheet.getRange(1, 1, rowCount, colCount).setVerticalAlignment('middle');
+    } catch (error) {
+      // Wyrownanie pionowe jest opcjonalne.
+    }
+  });
 }
 
 function ensureSheetExists_(spreadsheet, sheetName) {
