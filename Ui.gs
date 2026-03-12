@@ -12,6 +12,7 @@ function onOpen() {
     .addItem('6) Odswiez kontrole (Klienci_Procedury)', 'refreshClientProceduresControl')
     .addItem('7) Wyslij powiadomienia email (termin / opoznienia)', 'sendTaskReminderEmails')
     .addItem('8) Odswiez Moje_zadania wszystkich pracownikow (manager)', 'refreshAllMyTasksViewsForManager')
+    .addItem('9) Oznacz koniecznosc odswiezenia u pracownikow (manager)', 'setAllEmployeesRequireRefresh')
     .addSeparator()
     .addItem('Panel pracownika', 'openWorkerSidebar')
     .addItem('Panel managera', 'openManagerSidebar')
@@ -23,8 +24,9 @@ function onInstall() {
 }
 
 /**
- * Prosty trigger: przy zmianie zaznaczenia (w tym przejsciu na zakladke). Gdy uzytkownik jest na Moje_zadania
- * i minelo co najmniej MY_TASKS_AUTO_REFRESH_MINUTES od ostatniego odswiezenia – odswieza widok (najmniej inwazyjnie).
+ * Prosty trigger: przy zmianie zaznaczenia (w tym przejsciu na zakladke). Gdy uzytkownik jest na Moje_zadania:
+ * – jesli w Pracownicy ma zaznaczone wymaga_odswiezenia, odswieza widok i odznacza;
+ * – w przeciwnym razie odswieza co MY_TASKS_AUTO_REFRESH_MINUTES (fallback).
  */
 function onSelectionChange(e) {
   if (!e || !e.range) {
@@ -34,11 +36,20 @@ function onSelectionChange(e) {
   if (sheetName !== SHEET_NAMES.MY_TASKS) {
     return;
   }
+  const currentUser = getCurrentUserEmail_();
+
+  if (getEmployeeRequiresRefresh_()) {
+    try {
+      refreshMyTasksView();
+      clearEmployeeRequiresRefresh_(currentUser);
+    } catch (err) {}
+    return;
+  }
+
   const props = PropertiesService.getDocumentProperties();
   const now = Date.now();
   const lastRefresh = parseInt(props.getProperty('myTasksLastRefresh') || '0', 10);
   const lastUser = props.getProperty('myTasksLastUser') || '';
-  const currentUser = getCurrentUserEmail_();
   const intervalMs = MY_TASKS_AUTO_REFRESH_MINUTES * 60 * 1000;
   if (lastUser === currentUser && now - lastRefresh < intervalMs) {
     return;

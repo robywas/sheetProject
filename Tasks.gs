@@ -4,6 +4,9 @@ function generateTasks30Days() {
   const reassignedCount = generationResult.reassignedCount || 0;
   refreshManagerDashboard();
   try {
+    setAllEmployeesRequireRefresh(true);
+  } catch (error) {}
+  try {
     refreshMyTasksView();
   } catch (error) {
     // Brak mapowania pracownika nie powinien blokowac generowania.

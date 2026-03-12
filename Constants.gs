@@ -29,7 +29,7 @@ const HEADERS = Object.freeze({
     'interwal',
   ],
   CLIENTS: ['klient'],
-  EMPLOYEES: ['pracownik', 'email', 'rola', 'aktywny'],
+  EMPLOYEES: ['pracownik', 'email', 'rola', 'aktywny', 'wymaga_odswiezenia'],
   CLIENT_PROCEDURES: [
     'klient',
     'procedura',

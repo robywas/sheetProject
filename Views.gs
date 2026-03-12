@@ -811,6 +811,97 @@ function isCurrentUserManager_() {
   return employee && normalizeLookupKey_(employee.role) === 'manager';
 }
 
+/** Czy dla biezacego pracownika ustawiono wymaga_odswiezenia w Pracownicy (checkbox). */
+function getEmployeeRequiresRefresh_() {
+  const employee = resolveCurrentEmployee_();
+  if (!employee) {
+    return false;
+  }
+  const rows = getObjectRows_(SHEET_NAMES.EMPLOYEES);
+  const matched = rows.find(
+    (row) =>
+      normalizeText_(row.email).toLowerCase() === employee.email.toLowerCase()
+  );
+  if (!matched) {
+    return false;
+  }
+  return toBoolean_(matched.wymaga_odswiezenia, false);
+}
+
+/** Odznacza wymaga_odswiezenia dla pracownika o podanym emailu. */
+function clearEmployeeRequiresRefresh_(email) {
+  const sheet = getSheetOrThrow_(SHEET_NAMES.EMPLOYEES);
+  const values = sheet.getDataRange().getValues();
+  if (values.length < 2) {
+    return;
+  }
+  const headers = values[0].map((h) => String(h || '').trim());
+  const colIdx = headers.findIndex(
+    (h) => normalizeLookupKey_(h) === 'wymaga_odswiezenia'
+  );
+  if (colIdx === -1) {
+    return;
+  }
+  const emailColIdx = headers.findIndex(
+    (h) => normalizeLookupKey_(h) === 'email'
+  );
+  if (emailColIdx === -1) {
+    return;
+  }
+  const emailLower = normalizeText_(email).toLowerCase();
+  for (let r = 1; r < values.length; r += 1) {
+    if (normalizeText_(values[r][emailColIdx]).toLowerCase() === emailLower) {
+      sheet.getRange(r + 1, colIdx + 1).setValue(false);
+      return;
+    }
+  }
+}
+
+/** Ustawia wymaga_odswiezenia (checkbox) dla wszystkich pracownikow – tylko manager. silent – bez toasta. */
+function setAllEmployeesRequireRefresh(silent) {
+  if (!isCurrentUserManager_()) {
+    if (!silent) {
+      SpreadsheetApp.getActiveSpreadsheet().toast(
+        'Tylko manager moze oznaczac koniecznosc odswiezenia.',
+        'Procedury',
+        4
+      );
+    }
+    return;
+  }
+  const sheet = getSheetOrThrow_(SHEET_NAMES.EMPLOYEES);
+  const values = sheet.getDataRange().getValues();
+  if (values.length < 2) {
+    return;
+  }
+  const headers = values[0].map((h) => String(h || '').trim());
+  const colIdx = headers.findIndex(
+    (h) => normalizeLookupKey_(h) === 'wymaga_odswiezenia'
+  );
+  if (colIdx === -1) {
+    if (!silent) {
+      SpreadsheetApp.getActiveSpreadsheet().toast(
+        'Brak kolumny wymaga_odswiezenia. Uruchom Procedury > 1) Utworz/odswiez strukture.',
+        'Procedury',
+        5
+      );
+    }
+    return;
+  }
+  for (let r = 1; r < values.length; r += 1) {
+    if (values[r].some((cell) => cell !== '' && cell !== null)) {
+      sheet.getRange(r + 1, colIdx + 1).setValue(true);
+    }
+  }
+  if (!silent) {
+    SpreadsheetApp.getActiveSpreadsheet().toast(
+      'Oznaczono koniecznosc odswiezenia u wszystkich pracownikow.',
+      'Procedury',
+      4
+    );
+  }
+}
+
 function getWorkerSummary() {
   const employee = resolveCurrentEmployee_();
   if (!employee) {
