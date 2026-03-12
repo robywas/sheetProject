@@ -104,10 +104,6 @@ function refreshClientProceduresControl() {
     return;
   }
 
-  const today = normalizeDate_(new Date());
-  const horizon = new Date(today.getTime());
-  horizon.setDate(horizon.getDate() + DEFAULT_GENERATION_DAYS);
-
   const allTasks = getObjectRows_(SHEET_NAMES.TASKS).map((row) => ({
     klient: normalizeText_(row.klient || row.client_id),
     procedura: normalizeText_(row.procedura || row.procedure_id),
@@ -118,18 +114,16 @@ function refreshClientProceduresControl() {
   const statuses = relationRows.map((row) => {
     const clientKey = normalizeLookupKey_(row.klient || row.client_id);
     const procedureKey = normalizeLookupKey_(row.procedura || row.procedure_id);
-    const tasksInWindow = allTasks.filter(
+    const tasksForRelation = allTasks.filter(
       (t) =>
         normalizeLookupKey_(t.klient) === clientKey &&
         normalizeLookupKey_(t.procedura) === procedureKey &&
-        t.due_date &&
-        t.due_date >= today &&
-        t.due_date <= horizon
+        t.due_date
     );
-    if (tasksInWindow.length === 0) {
+    if (tasksForRelation.length === 0) {
       return ['Brak zadań'];
     }
-    const unassigned = tasksInWindow.some((t) => !t.pracownik);
+    const unassigned = tasksForRelation.some((t) => !t.pracownik);
     return [unassigned ? 'Nieprzypisane' : 'OK'];
   });
 
