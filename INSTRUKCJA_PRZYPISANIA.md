@@ -15,7 +15,10 @@ Kolumna **kolejnosc** (liczba ≥ 1) ustala priorytet przypisań dla danego klie
 
 ## Okres ważności
 
-**data_od** i **data_do** ograniczają, dla jakich terminów przypisanie obowiązuje. Zadanie z danym terminem (*due_date*) jest przypisywane tylko wtedy, gdy ten termin mieści się w przedziale [data_od, data_do] (puste data_od/data_do = brak ograniczenia z danej strony).
+**data_od** i **data_do** ograniczają, dla jakich terminów przypisanie obowiązuje:
+
+- **Przy wyborze pracownika:** zadanie z danym terminem (*due_date*) dostaje pracownika tylko z tych wierszy Przypisań, dla których ten termin mieści się w przedziale [data_od, data_do] (puste data_od/data_do = brak ograniczenia z danej strony).
+- **Przy automatycznym tworzeniu „następnego” zadania:** gdy zamykasz zadanie (status WYKONANE), system tworzy kolejne zadanie według harmonogramu procedury. Jeśli termin tego kolejnego zadania **wypada po** ostatniej **data_do** w Przypisaniach dla tego klienta, to zadanie **nie jest tworzone** — data_do traktowana jest jako koniec generowania zadań dla tego przypisania.
 
 ## Kiedy ustalany jest pracownik
 

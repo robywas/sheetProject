@@ -436,6 +436,23 @@ function pickNextEmployeeForDate_(clientAssignments, dueDate, previousEmployeeNa
   return eligibleEmployeeNames[(currentIdx + 1) % eligibleEmployeeNames.length];
 }
 
+function getLatestAssignmentEndDateForClient_(assignmentRows) {
+  if (!assignmentRows || assignmentRows.length === 0) {
+    return null;
+  }
+  let latest = null;
+  assignmentRows.forEach((row) => {
+    const d = toDate_(row.data_do);
+    if (d) {
+      const norm = normalizeDate_(d);
+      if (!latest || norm.getTime() > latest.getTime()) {
+        latest = norm;
+      }
+    }
+  });
+  return latest;
+}
+
 function getEligibleEmployeeNamesForDate_(clientAssignments, dueDate) {
   if (!clientAssignments || clientAssignments.length === 0) {
     return [];
@@ -631,6 +648,22 @@ function createNextTaskFromCompleted_(completedTask) {
     return false;
   }
 
+  const assignments = getObjectRows_(SHEET_NAMES.ASSIGNMENTS).filter((row) =>
+    normalizeText_(row.klient || row.client_id)
+  );
+  const clientKey = normalizeLookupKey_(completedTask.clientName);
+  const latestAssignmentEnd = getLatestAssignmentEndDateForClient_(
+    assignments.filter(
+      (row) => normalizeLookupKey_(row.klient || row.client_id) === clientKey
+    )
+  );
+  if (
+    latestAssignmentEnd &&
+    normalizeDate_(nextDueDate).getTime() > normalizeDate_(latestAssignmentEnd).getTime()
+  ) {
+    return false;
+  }
+
   const taskKey = buildTaskKey_(
     completedTask.clientName,
     procedureConfig.procedureName,
@@ -654,9 +687,6 @@ function createNextTaskFromCompleted_(completedTask) {
     return false;
   }
 
-  const assignments = getObjectRows_(SHEET_NAMES.ASSIGNMENTS).filter((row) =>
-    normalizeText_(row.klient || row.client_id)
-  );
   const clients = getObjectRows_(SHEET_NAMES.CLIENTS).filter((row) =>
     normalizeText_(row.klient)
   );
