@@ -91,6 +91,14 @@ function formatDateKey_(date) {
   );
 }
 
+/** Klucz miesiaca YYYY-MM do grupowania zadan (jeden pracownik na klienta w ramach miesiaca). */
+function getMonthKey_(date) {
+  const d = normalizeDate_(date);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  return y + '-' + m;
+}
+
 function buildTaskKey_(clientName, procedureName, dueDate) {
   return [
     normalizeText_(clientName),

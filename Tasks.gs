@@ -60,6 +60,9 @@ function generateRecurringTasks(daysAhead) {
   const rowByTaskKey = {};
   const lastTaskByPair = {};
   const reassignmentUpdates = [];
+  const lastEmployeeByClient = {};
+  const latestDueDateByClient = {};
+  const clientMonthToEmployee = {};
 
   existingTasks.forEach((row, idx) => {
     const clientRaw = normalizeText_(row.klient || row.client_id);
@@ -87,12 +90,21 @@ function generateRecurringTasks(daysAhead) {
     const pairKeyExisting =
       normalizeLookupKey_(clientName) + '|' + normalizeLookupKey_(procedureName);
     if (!employeeName) {
-      const filledEmployeeName = pickNextEmployeeForDate_(
-        assignmentsByClient[clientLookupKey] || [],
-        dueDate,
-        '',
-        pairKeyExisting
-      );
+      const monthKey = getMonthKey_(dueDate);
+      const clientMonthKey = clientLookupKey + '|' + monthKey;
+      let filledEmployeeName = clientMonthToEmployee[clientMonthKey];
+      if (!filledEmployeeName) {
+        filledEmployeeName = pickNextEmployeeForDate_(
+          assignmentsByClient[clientLookupKey] || [],
+          dueDate,
+          lastEmployeeByClient[clientLookupKey] || '',
+          clientMonthKey
+        );
+        if (filledEmployeeName) {
+          clientMonthToEmployee[clientMonthKey] = filledEmployeeName;
+          lastEmployeeByClient[clientLookupKey] = filledEmployeeName;
+        }
+      }
       if (filledEmployeeName) {
         employeeName = filledEmployeeName;
         reassignmentUpdates.push({
@@ -100,6 +112,11 @@ function generateRecurringTasks(daysAhead) {
           employeeName: filledEmployeeName,
         });
       }
+    }
+
+    if (employeeName && dueDate.getTime() >= (latestDueDateByClient[clientLookupKey] || 0)) {
+      latestDueDateByClient[clientLookupKey] = dueDate.getTime();
+      lastEmployeeByClient[clientLookupKey] = employeeName;
     }
 
     employeeByTaskKey[taskKey] = employeeName;
@@ -159,12 +176,21 @@ function generateRecurringTasks(daysAhead) {
           return;
         }
 
-        const reassignedEmployeeName = pickNextEmployeeForDate_(
-          assignmentsByClient[clientLookupKey] || [],
-          normalizedDueDate,
-          previousEmployeeName,
-          pairKey
-        );
+        const monthKey = getMonthKey_(normalizedDueDate);
+        const clientMonthKey = clientLookupKey + '|' + monthKey;
+        let reassignedEmployeeName = clientMonthToEmployee[clientMonthKey];
+        if (!reassignedEmployeeName) {
+          reassignedEmployeeName = pickNextEmployeeForDate_(
+            assignmentsByClient[clientLookupKey] || [],
+            normalizedDueDate,
+            lastEmployeeByClient[clientLookupKey] || previousEmployeeName,
+            clientMonthKey
+          );
+          if (reassignedEmployeeName) {
+            clientMonthToEmployee[clientMonthKey] = reassignedEmployeeName;
+            lastEmployeeByClient[clientLookupKey] = reassignedEmployeeName;
+          }
+        }
         if (!reassignedEmployeeName) {
           return;
         }
@@ -181,12 +207,21 @@ function generateRecurringTasks(daysAhead) {
         return;
       }
 
-      const employeeName = pickNextEmployeeForDate_(
-        assignmentsByClient[clientLookupKey] || [],
-        normalizedDueDate,
-        previousEmployeeName,
-        pairKey
-      );
+      const monthKeyNew = getMonthKey_(normalizedDueDate);
+      const clientMonthKeyNew = clientLookupKey + '|' + monthKeyNew;
+      let employeeName = clientMonthToEmployee[clientMonthKeyNew];
+      if (!employeeName) {
+        employeeName = pickNextEmployeeForDate_(
+          assignmentsByClient[clientLookupKey] || [],
+          normalizedDueDate,
+          lastEmployeeByClient[clientLookupKey] || previousEmployeeName,
+          clientMonthKeyNew
+        );
+        if (employeeName) {
+          clientMonthToEmployee[clientMonthKeyNew] = employeeName;
+          lastEmployeeByClient[clientLookupKey] = employeeName;
+        }
+      }
 
       newRows.push([
         Utilities.getUuid(),
