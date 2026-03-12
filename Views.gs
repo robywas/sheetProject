@@ -88,7 +88,7 @@ function refreshMyTasksViewForEmployeeName_(employeeName) {
     if (dueKey < todayKey) {
       rowRange.setBackground('#fde7e9');
     } else if (dueKey === todayKey) {
-      rowRange.setBackground('#fff4e5');
+      rowRange.setBackground('#d4edda');
     }
   });
 }
