@@ -100,57 +100,6 @@ function writeMyTasksViewToSheet_(sheet, employeeName) {
   });
 }
 
-/** Zwraca arkusz „Moje_zadania - {employeeName}”; tworzy go, jesli nie istnieje. */
-function getOrCreateMyTasksSheetForEmployee_(employeeName) {
-  const name = normalizeText_(employeeName);
-  if (!name) {
-    return null;
-  }
-  const sheetName = MY_TASKS_SHEET_PREFIX + name;
-  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
-  let sheet = spreadsheet.getSheetByName(sheetName);
-  if (!sheet) {
-    sheet = spreadsheet.insertSheet(sheetName);
-  }
-  return sheet;
-}
-
-/**
- * Odswieza widok Moje_zadania dla kazdego pracownika z arkusza Pracownicy (tylko manager).
- * Tworzy/aktualizuje arkusze „Moje_zadania - {imie nazwisko}”. Pracownik widzi tylko swoj arkusz.
- */
-function refreshAllMyTasksViewsForManager() {
-  if (!isCurrentUserManager_()) {
-    SpreadsheetApp.getActiveSpreadsheet().toast(
-      'Tylko manager moze odswiezyc widoki wszystkich pracownikow.',
-      'Procedury',
-      4
-    );
-    return;
-  }
-  const employees = getObjectRows_(SHEET_NAMES.EMPLOYEES).filter((row) =>
-    normalizeText_(row.pracownik || row.employee_id)
-  );
-  let count = 0;
-  employees.forEach((row) => {
-    const employeeName = normalizeText_(row.pracownik || row.employee_id);
-    if (!employeeName) {
-      return;
-    }
-    const sheet = getOrCreateMyTasksSheetForEmployee_(employeeName);
-    if (sheet) {
-      writeMyTasksViewToSheet_(sheet, employeeName);
-      count += 1;
-    }
-  });
-  applySheetVisibilityByRole_();
-  SpreadsheetApp.getActiveSpreadsheet().toast(
-    'Odswiezono widoki Moje_zadania dla ' + count + ' pracownikow.',
-    'Procedury',
-    5
-  );
-}
-
 function refreshClientProceduresControl() {
   const sheet = getSheetOrThrow_(SHEET_NAMES.CLIENT_PROCEDURES);
   const relationRows = getObjectRows_(SHEET_NAMES.CLIENT_PROCEDURES).filter(
