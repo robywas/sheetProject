@@ -879,7 +879,10 @@ function onEdit(e) {
     }
   }
 
-  if (editedSheetName !== SHEET_NAMES.MY_TASKS || e.range.getRow() === 1) {
+  const isMyTasksSheet =
+    editedSheetName === SHEET_NAMES.MY_TASKS ||
+    editedSheetName.startsWith(MY_TASKS_SHEET_PREFIX);
+  if (!isMyTasksSheet || e.range.getRow() === 1) {
     return;
   }
 
@@ -910,6 +913,10 @@ function onEdit(e) {
 
     refreshMyTasksView();
     refreshManagerDashboard();
+    if (editedSheetName.startsWith(MY_TASKS_SHEET_PREFIX)) {
+      const employeeName = editedSheetName.slice(MY_TASKS_SHEET_PREFIX.length);
+      writeMyTasksViewToSheet_(sheet, employeeName);
+    }
     return;
   }
 
@@ -921,6 +928,10 @@ function onEdit(e) {
       return;
     }
     updateTaskNote_(taskId, e.range.getValue());
+    if (editedSheetName.startsWith(MY_TASKS_SHEET_PREFIX)) {
+      const employeeName = editedSheetName.slice(MY_TASKS_SHEET_PREFIX.length);
+      writeMyTasksViewToSheet_(sheet, employeeName);
+    }
   }
 }
 

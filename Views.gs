@@ -13,6 +13,18 @@ function refreshMyTasksViewForEmployeeName_(employeeName) {
   if (!selectedEmployeeName) {
     return;
   }
+  const myTasksSheet = getSheetOrThrow_(SHEET_NAMES.MY_TASKS);
+  writeMyTasksViewToSheet_(myTasksSheet, selectedEmployeeName);
+}
+
+/**
+ * Zapisuje widok „Moje zadania” dla danego pracownika do podanego arkusza (naglowek, wiersze, walidacja, formatowanie).
+ */
+function writeMyTasksViewToSheet_(sheet, employeeName) {
+  const selectedEmployeeName = normalizeText_(employeeName);
+  if (!selectedEmployeeName) {
+    return;
+  }
   const relationNotesByKey = buildClientProcedureNotesByKey_(
     getObjectRows_(SHEET_NAMES.CLIENT_PROCEDURES)
   );
@@ -43,12 +55,11 @@ function refreshMyTasksViewForEmployeeName_(employeeName) {
     .filter((task) => task.taskId && task.dueDate)
     .sort((left, right) => left.dueDate - right.dueDate);
 
-  const myTasksSheet = getSheetOrThrow_(SHEET_NAMES.MY_TASKS);
-  myTasksSheet.getRange(1, 1, 1, HEADERS.MY_TASKS.length).setValues([HEADERS.MY_TASKS]);
-  clearSheetBody_(myTasksSheet, HEADERS.MY_TASKS.length);
+  sheet.getRange(1, 1, 1, HEADERS.MY_TASKS.length).setValues([HEADERS.MY_TASKS]);
+  clearSheetBody_(sheet, HEADERS.MY_TASKS.length);
 
   if (openTasks.length === 0) {
-    myTasksSheet.getRange(2, 1).setValue('Brak otwartych zadan.');
+    sheet.getRange(2, 1).setValue('Brak otwartych zadan.');
     return;
   }
 
@@ -62,19 +73,15 @@ function refreshMyTasksViewForEmployeeName_(employeeName) {
     task.note,
   ]);
 
-  ensureSheetSize_(myTasksSheet, rows.length + 1, HEADERS.MY_TASKS.length);
-  myTasksSheet
-    .getRange(2, 1, rows.length, HEADERS.MY_TASKS.length)
-    .setValues(rows);
+  ensureSheetSize_(sheet, rows.length + 1, HEADERS.MY_TASKS.length);
+  sheet.getRange(2, 1, rows.length, HEADERS.MY_TASKS.length).setValues(rows);
 
   const statusRule = SpreadsheetApp.newDataValidation()
     .requireValueInList([STATUS.NEW, STATUS.IN_PROGRESS, STATUS.DONE], true)
     .setAllowInvalid(false)
     .build();
-  myTasksSheet
-    .getRange(2, MY_TASKS_COL.STATUS, rows.length, 1)
-    .setDataValidation(statusRule);
-  myTasksSheet.getRange(2, MY_TASKS_COL.DUE_DATE, rows.length, 1).setNumberFormat('yyyy-mm-dd');
+  sheet.getRange(2, MY_TASKS_COL.STATUS, rows.length, 1).setDataValidation(statusRule);
+  sheet.getRange(2, MY_TASKS_COL.DUE_DATE, rows.length, 1).setNumberFormat('yyyy-mm-dd');
 
   const today = normalizeDate_(new Date());
   const todayKey = formatDateKey_(today);
@@ -84,13 +91,64 @@ function refreshMyTasksViewForEmployeeName_(employeeName) {
       return;
     }
     const dueKey = formatDateKey_(dueDate);
-    const rowRange = myTasksSheet.getRange(idx + 2, 1, 1, HEADERS.MY_TASKS.length);
+    const rowRange = sheet.getRange(idx + 2, 1, 1, HEADERS.MY_TASKS.length);
     if (dueKey < todayKey) {
       rowRange.setBackground('#fde7e9');
     } else if (dueKey === todayKey) {
       rowRange.setBackground('#d4edda');
     }
   });
+}
+
+/** Zwraca arkusz „Moje_zadania - {employeeName}”; tworzy go, jesli nie istnieje. */
+function getOrCreateMyTasksSheetForEmployee_(employeeName) {
+  const name = normalizeText_(employeeName);
+  if (!name) {
+    return null;
+  }
+  const sheetName = MY_TASKS_SHEET_PREFIX + name;
+  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = spreadsheet.getSheetByName(sheetName);
+  if (!sheet) {
+    sheet = spreadsheet.insertSheet(sheetName);
+  }
+  return sheet;
+}
+
+/**
+ * Odswieza widok Moje_zadania dla kazdego pracownika z arkusza Pracownicy (tylko manager).
+ * Tworzy/aktualizuje arkusze „Moje_zadania - {imie nazwisko}”. Pracownik widzi tylko swoj arkusz.
+ */
+function refreshAllMyTasksViewsForManager() {
+  if (!isCurrentUserManager_()) {
+    SpreadsheetApp.getActiveSpreadsheet().toast(
+      'Tylko manager moze odswiezyc widoki wszystkich pracownikow.',
+      'Procedury',
+      4
+    );
+    return;
+  }
+  const employees = getObjectRows_(SHEET_NAMES.EMPLOYEES).filter((row) =>
+    normalizeText_(row.pracownik || row.employee_id)
+  );
+  let count = 0;
+  employees.forEach((row) => {
+    const employeeName = normalizeText_(row.pracownik || row.employee_id);
+    if (!employeeName) {
+      return;
+    }
+    const sheet = getOrCreateMyTasksSheetForEmployee_(employeeName);
+    if (sheet) {
+      writeMyTasksViewToSheet_(sheet, employeeName);
+      count += 1;
+    }
+  });
+  applySheetVisibilityByRole_();
+  SpreadsheetApp.getActiveSpreadsheet().toast(
+    'Odswiezono widoki Moje_zadania dla ' + count + ' pracownikow.',
+    'Procedury',
+    5
+  );
 }
 
 function refreshClientProceduresControl() {
@@ -831,17 +889,29 @@ function applySheetVisibilityByRole_() {
   const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
   const isManager = isCurrentUserManager_();
   const managerOnlySet = new Set(SHEETS_VISIBLE_ONLY_TO_MANAGER);
+  const currentEmployee = resolveCurrentEmployee_();
+  const mySheetNameForCurrentUser =
+    currentEmployee ? MY_TASKS_SHEET_PREFIX + currentEmployee.employeeName : null;
 
   spreadsheet.getSheets().forEach((sheet) => {
     const name = sheet.getName();
-    if (!managerOnlySet.has(name)) {
-      return;
-    }
     try {
-      if (isManager) {
-        sheet.showSheet();
-      } else {
-        sheet.hideSheet();
+      if (managerOnlySet.has(name)) {
+        if (isManager) {
+          sheet.showSheet();
+        } else {
+          sheet.hideSheet();
+        }
+        return;
+      }
+      if (name.startsWith(MY_TASKS_SHEET_PREFIX)) {
+        if (isManager) {
+          sheet.showSheet();
+        } else if (name === mySheetNameForCurrentUser) {
+          sheet.showSheet();
+        } else {
+          sheet.hideSheet();
+        }
       }
     } catch (e) {
       // Ignoruj bledy (np. brak uprawnien do ukrywania).

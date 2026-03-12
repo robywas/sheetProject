@@ -9,6 +9,16 @@ const SHEET_NAMES = Object.freeze({
   MANAGER_DASHBOARD: 'Dashboard_managera',
 });
 
+/** Prefiks arkusza „Moje zadania” per pracownik (np. „Moje_zadania - Jan Kowalski”). */
+const MY_TASKS_SHEET_PREFIX = 'Moje_zadania - ';
+
+/** Arkusze widoczne tylko dla managera; przy otwarciu przez pracownika są ukrywane (por. applySheetVisibilityByRole_). */
+const SHEETS_VISIBLE_ONLY_TO_MANAGER = Object.freeze([
+  SHEET_NAMES.TASKS,
+  SHEET_NAMES.ASSIGNMENTS,
+  SHEET_NAMES.MANAGER_DASHBOARD,
+]);
+
 const HEADERS = Object.freeze({
   PROCEDURES: [
     'procedura',

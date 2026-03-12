@@ -14,6 +14,7 @@ function onOpen() {
     .addItem('5) Odswiez dashboard managera', 'refreshManagerDashboard')
     .addItem('6) Odswiez kontrole (Klienci_Procedury)', 'refreshClientProceduresControl')
     .addItem('7) Wyslij powiadomienia email (termin / opoznienia)', 'sendTaskReminderEmails')
+    .addItem('8) Odswiez Moje_zadania wszystkich pracownikow (manager)', 'refreshAllMyTasksViewsForManager')
     .addSeparator()
     .addItem('Panel pracownika', 'openWorkerSidebar')
     .addItem('Panel managera', 'openManagerSidebar')
