@@ -30,13 +30,11 @@ function onOpen() {
 
 /**
  * Wywolywane przez instalowalny trigger przy otwarciu skoroszytu (prosty onOpen nie moze otwierac sidebara).
- * Trigger dziala w kontekście instalatora, wiec rola jest ustalana po emailu osoby otwierajacej (zapisany w prostym onOpen).
+ * Ustawianie widocznosci arkuszy NIE jest tu wywolywane – robi to tylko prosty onOpen (jako osoba otwierajaca).
+ * Tutaj tylko otwieramy odpowiedni panel, po emailu z DocumentProperties (ustawionym w prostym onOpen).
  */
 function openPanelOnOpen() {
-  var openerEmail = (PropertiesService.getDocumentProperties().getProperty('lastOpenerEmail') || getCurrentUserEmail_() || '').toLowerCase();
-  try {
-    applySheetVisibilityByRole_(openerEmail);
-  } catch (e) {}
+  var openerEmail = (PropertiesService.getDocumentProperties().getProperty('lastOpenerEmail') || '').toLowerCase();
   try {
     if (isManagerByEmail_(openerEmail)) {
       openManagerSidebar();
