@@ -77,15 +77,20 @@ function refreshMyTasksViewForEmployeeName_(employeeName) {
   myTasksSheet.getRange(2, MY_TASKS_COL.DUE_DATE, rows.length, 1).setNumberFormat('yyyy-mm-dd');
 
   const today = normalizeDate_(new Date());
+  const todayKey = formatDateKey_(today);
   rows.forEach((row, idx) => {
     const dueDate = toDate_(row[MY_TASKS_COL.DUE_DATE - 1]);
-    if (dueDate && dueDate < today) {
-      myTasksSheet
-        .getRange(idx + 2, 1, 1, HEADERS.MY_TASKS.length)
-        .setBackground('#fde7e9');
+    if (!dueDate) {
+      return;
+    }
+    const dueKey = formatDateKey_(dueDate);
+    const rowRange = myTasksSheet.getRange(idx + 2, 1, 1, HEADERS.MY_TASKS.length);
+    if (dueKey < todayKey) {
+      rowRange.setBackground('#fde7e9');
+    } else if (dueKey === todayKey) {
+      rowRange.setBackground('#fff4e5');
     }
   });
-
 }
 
 function refreshClientProceduresControl() {
