@@ -281,7 +281,12 @@ function applyDataValidation_() {
 
   const clientNameRange = clientsSheet.getRange(2, 1, clientRows, 1);
   const procedureNameRange = proceduresSheet.getRange(2, 1, procedureRows, 1);
-  const employeeNameRange = employeesSheet.getRange(2, 1, employeeRows, 1);
+  const employeeNameRange = employeesSheet.getRange(
+    2,
+    1,
+    Math.max(employeeRows + 50, 100),
+    1
+  );
 
   const clientNameRule = SpreadsheetApp.newDataValidation()
     .requireValueInRange(clientNameRange, true)
@@ -293,25 +298,11 @@ function applyDataValidation_() {
     .setAllowInvalid(false)
     .setHelpText('Wybierz procedure z zakladki Procedury.')
     .build();
-  const employeeOptions = [''];
-  const employeeSeen = {};
-  employeeNameRange.getValues().forEach((row) => {
-    const employeeName = normalizeText_(row[0]);
-    if (!employeeName) {
-      return;
-    }
-    const key = normalizeLookupKey_(employeeName);
-    if (employeeSeen[key]) {
-      return;
-    }
-    employeeSeen[key] = true;
-    employeeOptions.push(employeeName);
-  });
   const optionalEmployeeNameRule = SpreadsheetApp.newDataValidation()
-    .requireValueInList(employeeOptions, true)
-    .setAllowInvalid(false)
+    .requireValueInRange(employeeNameRange, true)
+    .setAllowInvalid(true)
     .setHelpText(
-      'Wybierz pracownika albo zostaw puste (rotacja wszystkich pracownikow).'
+      'Wybierz pracownika z zakladki Pracownicy albo zostaw puste (rotacja).'
     )
     .build();
 
