@@ -1,5 +1,11 @@
 function onOpen() {
   try {
+    var openerEmail = Session.getEffectiveUser().getEmail();
+    if (openerEmail) {
+      PropertiesService.getDocumentProperties().setProperty('lastOpenerEmail', openerEmail);
+    }
+  } catch (e) {}
+  try {
     applySheetVisibilityByRole_();
   } catch (e) {
     // Widocznosc arkuszy nie moze blokowac menu.
@@ -24,13 +30,15 @@ function onOpen() {
 
 /**
  * Wywolywane przez instalowalny trigger przy otwarciu skoroszytu (prosty onOpen nie moze otwierac sidebara).
+ * Trigger dziala w kontekście instalatora, wiec rola jest ustalana po emailu osoby otwierajacej (zapisany w prostym onOpen).
  */
 function openPanelOnOpen() {
+  var openerEmail = (PropertiesService.getDocumentProperties().getProperty('lastOpenerEmail') || getCurrentUserEmail_() || '').toLowerCase();
   try {
-    applySheetVisibilityByRole_();
+    applySheetVisibilityByRole_(openerEmail);
   } catch (e) {}
   try {
-    if (isCurrentUserManager_()) {
+    if (isManagerByEmail_(openerEmail)) {
       openManagerSidebar();
     } else {
       openWorkerSidebar();
