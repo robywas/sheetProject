@@ -81,11 +81,14 @@ function generateRecurringTasks(daysAhead) {
       buildTaskKey_(clientName, procedureName, dueDate);
     existingKeys.add(taskKey);
 
+    const pairKeyExisting =
+      normalizeLookupKey_(clientName) + '|' + normalizeLookupKey_(procedureName);
     if (!employeeName) {
       const filledEmployeeName = pickNextEmployeeForDate_(
         assignmentsByClient[clientLookupKey] || [],
         dueDate,
-        ''
+        '',
+        pairKeyExisting
       );
       if (filledEmployeeName) {
         employeeName = filledEmployeeName;
@@ -99,10 +102,9 @@ function generateRecurringTasks(daysAhead) {
     employeeByTaskKey[taskKey] = employeeName;
     rowByTaskKey[taskKey] = idx + 2;
 
-    const pairKey = normalizeLookupKey_(clientName) + '|' + normalizeLookupKey_(procedureName);
-    const current = lastTaskByPair[pairKey];
+    const current = lastTaskByPair[pairKeyExisting];
     if (!current || dueDate > current.dueDate) {
-      lastTaskByPair[pairKey] = {
+      lastTaskByPair[pairKeyExisting] = {
         dueDate,
         employeeName,
       };
@@ -157,7 +159,8 @@ function generateRecurringTasks(daysAhead) {
         const reassignedEmployeeName = pickNextEmployeeForDate_(
           assignmentsByClient[clientLookupKey] || [],
           normalizedDueDate,
-          previousEmployeeName
+          previousEmployeeName,
+          pairKey
         );
         if (!reassignedEmployeeName) {
           return;
@@ -178,7 +181,8 @@ function generateRecurringTasks(daysAhead) {
       const employeeName = pickNextEmployeeForDate_(
         assignmentsByClient[clientLookupKey] || [],
         normalizedDueDate,
-        previousEmployeeName
+        previousEmployeeName,
+        pairKey
       );
 
       newRows.push([
@@ -413,7 +417,16 @@ function getAssignableEmployeeNames_(employeeRows) {
   return names;
 }
 
-function pickNextEmployeeForDate_(clientAssignments, dueDate, previousEmployeeName) {
+/**
+ * Wybiera nastepnego pracownika (rotacja). Gdy brak poprzedniego zadania, rotationSeed (np. pairKey)
+ * sluzy do rozlozenia zadan miedzy pracownikow zamiast zawsze zwracac pierwszego z listy.
+ */
+function pickNextEmployeeForDate_(
+  clientAssignments,
+  dueDate,
+  previousEmployeeName,
+  rotationSeed
+) {
   const eligibleEmployeeNames = getEligibleEmployeeNamesForDate_(
     clientAssignments,
     dueDate
@@ -423,6 +436,11 @@ function pickNextEmployeeForDate_(clientAssignments, dueDate, previousEmployeeNa
   }
 
   if (!previousEmployeeName) {
+    if (rotationSeed && eligibleEmployeeNames.length > 1) {
+      const hash = simpleHash_(rotationSeed);
+      const idx = Math.abs(hash) % eligibleEmployeeNames.length;
+      return eligibleEmployeeNames[idx];
+    }
     return eligibleEmployeeNames[0];
   }
 
@@ -434,6 +452,18 @@ function pickNextEmployeeForDate_(clientAssignments, dueDate, previousEmployeeNa
     return eligibleEmployeeNames[0];
   }
   return eligibleEmployeeNames[(currentIdx + 1) % eligibleEmployeeNames.length];
+}
+
+function simpleHash_(str) {
+  if (!str) {
+    return 0;
+  }
+  let h = 0;
+  const s = String(str);
+  for (let i = 0; i < s.length; i += 1) {
+    h = (h * 31 + s.charCodeAt(i)) | 0;
+  }
+  return h;
 }
 
 function getLatestAssignmentEndDateForClient_(assignmentRows) {
