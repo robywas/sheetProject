@@ -90,7 +90,7 @@ const MY_TASKS_COL = Object.freeze({
 });
 
 /** Id wersji (short commit) – ustaw na aktualny po deployu (git rev-parse --short HEAD). */
-const DEPLOY_ID = 'b020e40';
+const DEPLOY_ID = '6318074';
 
 const DEFAULT_GENERATION_DAYS = 30;
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
