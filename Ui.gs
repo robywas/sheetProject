@@ -17,17 +17,25 @@ function onOpen() {
     .addSeparator()
     .addItem('Panel pracownika', 'openWorkerSidebar')
     .addItem('Panel managera', 'openManagerSidebar')
+    .addSeparator()
+    .addItem('8) Zainstaluj auto-otwieranie panelu', 'installPanelOnOpenTrigger')
     .addToUi();
+}
 
+/**
+ * Wywolywane przez instalowalny trigger przy otwarciu skoroszytu (prosty onOpen nie moze otwierac sidebara).
+ */
+function openPanelOnOpen() {
+  try {
+    applySheetVisibilityByRole_();
+  } catch (e) {}
   try {
     if (isCurrentUserManager_()) {
       openManagerSidebar();
     } else {
       openWorkerSidebar();
     }
-  } catch (e) {
-    // Otwarcie panelu nie moze blokowac onOpen.
-  }
+  } catch (e) {}
 }
 
 function onInstall() {
@@ -55,4 +63,29 @@ function openManagerSidebar() {
     .setTitle('Panel managera')
     .setWidth(340);
   SpreadsheetApp.getUi().showSidebar(html);
+}
+
+/**
+ * Tworzy instalowalny trigger "On open", ktory przy kazdym otwarciu uruchamia openPanelOnOpen (widocznosc arkuszy + otwarcie sidebara).
+ * Uruchom raz z menu (np. jako manager); przy pierwszym uruchomieniu zatwierdz uprawnienia. Od tego momentu panel bedzie sie otwieral przy otwarciu skoroszytu.
+ */
+function installPanelOnOpenTrigger() {
+  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  ScriptApp.getProjectTriggers().forEach((trigger) => {
+    if (
+      trigger.getHandlerFunction() === 'openPanelOnOpen' &&
+      trigger.getEventType() === ScriptApp.EventType.ON_OPEN
+    ) {
+      ScriptApp.deleteTrigger(trigger);
+    }
+  });
+  ScriptApp.newTrigger('openPanelOnOpen')
+    .forSpreadsheet(spreadsheet)
+    .onOpen()
+    .create();
+  SpreadsheetApp.getActiveSpreadsheet().toast(
+    'Auto-otwieranie panelu wlaczone. Przy nastepnym otwarciu skoroszytu otworzy sie odpowiedni panel.',
+    'Procedury',
+    8
+  );
 }
