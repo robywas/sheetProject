@@ -1,4 +1,9 @@
 function onOpen() {
+  try {
+    applySheetVisibilityByRole_();
+  } catch (e) {
+    // Widocznosc arkuszy nie moze blokowac menu.
+  }
   SpreadsheetApp.getUi()
     .createMenu('Procedury')
     .addItem('1) Utworz/odswiez strukture', 'setupWorkbook')
@@ -13,6 +18,16 @@ function onOpen() {
     .addItem('Panel pracownika', 'openWorkerSidebar')
     .addItem('Panel managera', 'openManagerSidebar')
     .addToUi();
+
+  try {
+    if (isCurrentUserManager_()) {
+      openManagerSidebar();
+    } else {
+      openWorkerSidebar();
+    }
+  } catch (e) {
+    // Otwarcie panelu nie moze blokowac onOpen.
+  }
 }
 
 function onInstall() {
