@@ -223,12 +223,17 @@ function getLookupMap_(rows, keyField, valueField) {
 }
 
 function parseScheduleDay_(value) {
-  const raw = normalizeText_(value).toUpperCase();
+  const raw = normalizeText_(String(value || '')).toUpperCase();
   if (!raw) {
     return null;
   }
 
-  if (raw === SCHEDULE_LAST_DAY_TOKEN || raw === 'LAST') {
+  if (
+    raw === SCHEDULE_LAST_DAY_TOKEN ||
+    raw === 'LAST' ||
+    raw.includes(SCHEDULE_LAST_DAY_TOKEN) ||
+    raw.includes('LAST')
+  ) {
     return { mode: 'last' };
   }
 

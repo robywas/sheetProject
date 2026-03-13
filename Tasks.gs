@@ -565,9 +565,14 @@ function buildProcedureConfigs_(procedureRows) {
         ? SCHEDULE_MODE.DAILY
         : SCHEDULE_MODE.MONTHLY;
     const interval = Math.max(1, toNumber_(row.interwal, 1));
-    const schedule = parseScheduleDay_(row.dzien_miesiaca);
+    let schedule = parseScheduleDay_(row.dzien_miesiaca);
     if (scheduleMode === SCHEDULE_MODE.MONTHLY && !schedule) {
-      return;
+      const dzienRaw = normalizeText_(String(row.dzien_miesiaca || '')).toUpperCase();
+      if (dzienRaw.includes(SCHEDULE_LAST_DAY_TOKEN) || dzienRaw.includes('LAST')) {
+        schedule = { mode: 'last' };
+      } else {
+        return;
+      }
     }
 
     map[normalizeLookupKey_(procedureName)] = {
