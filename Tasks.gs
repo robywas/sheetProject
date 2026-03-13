@@ -228,9 +228,9 @@ function generateRecurringTasks(daysAhead) {
         '',
         relationUwagi,
         '',
-        taskKey,
         procedure.warningDays || 0,
         new Date(),
+        taskKey,
       ]);
       previousEmployeeName = employeeName || previousEmployeeName;
       existingKeys.add(taskKey);
@@ -241,10 +241,11 @@ function generateRecurringTasks(daysAhead) {
   if (newRows.length > 0) {
     const taskSheet = getSheetOrThrow_(SHEET_NAMES.TASKS);
     const startRow = taskSheet.getLastRow() + 1;
-    ensureSheetSize_(taskSheet, startRow + newRows.length - 1, HEADERS.TASKS.length);
-    taskSheet
-      .getRange(startRow, 1, newRows.length, HEADERS.TASKS.length)
-      .setValues(newRows);
+    const endRow = startRow + newRows.length - 1;
+    ensureSheetSize_(taskSheet, endRow, HEADERS.TASKS.length);
+    const endColLetter = String.fromCharCode(64 + HEADERS.TASKS.length);
+    const a1 = 'A' + startRow + ':' + endColLetter + endRow;
+    taskSheet.getRange(a1).setValues(newRows);
   }
 
   if (reassignmentUpdates.length > 0) {
@@ -810,9 +811,9 @@ function createNextTaskFromCompleted_(completedTask) {
     '',
     uwagi,
     '',
-    taskKey,
     procedureConfig.warningDays || 0,
     new Date(),
+    taskKey,
   ];
 
   const taskSheet = getSheetOrThrow_(SHEET_NAMES.TASKS);
@@ -915,7 +916,7 @@ function highlightLateCompletedTasks_(taskSheet, rows) {
     return [isLateDone ? '#fde7e9' : ''];
   });
 
-  taskSheet.getRange(2, TASKS_COL.STATUS, rows.length + 1, TASKS_COL.STATUS).setBackgrounds(statusBackgrounds);
+  taskSheet.getRange(2, TASKS_COL.STATUS, rows.length, TASKS_COL.STATUS).setBackgrounds(statusBackgrounds);
 }
 
 function buildNameMapByKey_(rows, fieldCandidates) {

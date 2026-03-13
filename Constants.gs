@@ -53,9 +53,9 @@ const HEADERS = Object.freeze({
     'completed_at',
     'uwagi',
     'notes',
-    'task_key',
     'dni_ostrzezenia',
     'created_at',
+    'task_key',
   ],
   MY_TASKS: [
     'task_id',
@@ -89,7 +89,7 @@ const MANAGER_FILTER = Object.freeze({
   DEFAULT_RISK_DAYS: 2,
 });
 
-/** Indeksy kolumn arkusza Zadania (1-based). Kolejnosc: task_id, klient, procedura, pracownik, status, due_date, completed_at, uwagi, notes, task_key, dni_ostrzezenia, created_at. */
+/** Indeksy kolumn arkusza Zadania (1-based). Kolejnosc: task_id, klient, procedura, pracownik, status, due_date, completed_at, uwagi, notes, dni_ostrzezenia, created_at, task_key. */
 const TASKS_COL = Object.freeze({
   TASK_ID: 1,
   KLIENT: 2,
@@ -100,9 +100,9 @@ const TASKS_COL = Object.freeze({
   COMPLETED_AT: 7,
   UWAGI: 8,
   NOTES: 9,
-  TASK_KEY: 10,
-  DNI_OSTRZEZENIA: 11,
-  CREATED_AT: 12,
+  DNI_OSTRZEZENIA: 10,
+  CREATED_AT: 11,
+  TASK_KEY: 12,
 });
 
 const MY_TASKS_COL = Object.freeze({
