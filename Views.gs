@@ -8,13 +8,87 @@ function refreshMyTasksView() {
   refreshMyTasksViewForEmployeeName_(employee.employeeName);
 }
 
+/**
+ * Formatuje nowo utworzony arkusz Moje_zadania na wzor Zadania:
+ * naglowek (czcionka, wyrownanie, tlo, itd.), wysokosc wierszy, zamrozenie wiersza 1, ukrycie kolumny A (task_id).
+ */
+function formatNewMyTasksSheetFromTasks_(myTasksSheet) {
+  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  const tasksSheet = spreadsheet.getSheetByName(SHEET_NAMES.TASKS);
+  if (!tasksSheet) {
+    return;
+  }
+  const numCols = HEADERS.MY_TASKS.length;
+  const pasteFormat = SpreadsheetApp.CopyPasteType.PASTE_FORMAT;
+
+  tasksSheet.getRange(1, 1, 1, numCols).copyTo(
+    myTasksSheet.getRange(1, 1, 1, numCols),
+    pasteFormat,
+    false
+  );
+  myTasksSheet.setRowHeight(1, tasksSheet.getRowHeight(1));
+  myTasksSheet.setRowHeight(2, tasksSheet.getRowHeight(2));
+  tasksSheet.getRange(2, 1, 2, numCols).copyTo(
+    myTasksSheet.getRange(2, 1, 2, numCols),
+    pasteFormat,
+    false
+  );
+  myTasksSheet.setFrozenRows(1);
+  myTasksSheet.hideColumns(1);
+}
+
+/**
+ * Zwraca arkusz „Moje_zadania - [employeeName]”; tworzy go, jesli nie istnieje.
+ * Przy tworzeniu kopiuje formatowanie z arkusza Zadania i ukrywa kolumne A (task_id).
+ */
+function getOrCreateMyTasksSheetForEmployee_(employeeName) {
+  const name = normalizeText_(employeeName);
+  if (!name) {
+    return null;
+  }
+  const sheetName = MY_TASKS_SHEET_PREFIX + name;
+  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = spreadsheet.getSheetByName(sheetName);
+  if (!sheet) {
+    sheet = spreadsheet.insertSheet(sheetName);
+    formatNewMyTasksSheetFromTasks_(sheet);
+  }
+  return sheet;
+}
+
 function refreshMyTasksViewForEmployeeName_(employeeName) {
   const selectedEmployeeName = normalizeText_(employeeName);
   if (!selectedEmployeeName) {
     return;
   }
-  const myTasksSheet = getSheetOrThrow_(SHEET_NAMES.MY_TASKS);
+  const myTasksSheet = getOrCreateMyTasksSheetForEmployee_(selectedEmployeeName);
+  if (!myTasksSheet) {
+    return;
+  }
   writeMyTasksViewToSheet_(myTasksSheet, selectedEmployeeName);
+}
+
+/**
+ * Odswieza arkusze Moje_zadania dla pracownikow aktywnych (checkbox „aktywny” w Pracownicy).
+ * Tylko oni maja zadania przydzielane i tylko dla nich tworzone/odswiezane sa arkusze Moje_zadania - X.
+ * Wywolywane z menu (procedura 4) oraz po wygenerowaniu zadan.
+ */
+function refreshAllMyTasksViews() {
+  const employees = getObjectRows_(SHEET_NAMES.EMPLOYEES).filter(
+    (row) =>
+      normalizeText_(row.pracownik || row.employee_id) &&
+      toBoolean_(row.aktywny, true)
+  );
+  employees.forEach((row) => {
+    const name = normalizeText_(row.pracownik || row.employee_id);
+    if (name) {
+      try {
+        refreshMyTasksViewForEmployeeName_(name);
+      } catch (e) {
+        // Pomin bledy dla pojedynczego pracownika.
+      }
+    }
+  });
 }
 
 /**
@@ -59,7 +133,12 @@ function writeMyTasksViewToSheet_(sheet, employeeName) {
   clearSheetBody_(sheet, HEADERS.MY_TASKS.length);
 
   if (openTasks.length === 0) {
-    sheet.getRange(2, 1).setValue('Brak otwartych zadan.');
+    if (sheet.getSheetName().startsWith(MY_TASKS_SHEET_PREFIX)) {
+      SpreadsheetApp.getActiveSpreadsheet().deleteSheet(sheet);
+    } else {
+      sheet.getRange(2, 1).setValue('Brak otwartych zadan.');
+      applyMyTasksBodyFormatFromTasks_(sheet);
+    }
     return;
   }
 
@@ -91,13 +170,94 @@ function writeMyTasksViewToSheet_(sheet, employeeName) {
       return;
     }
     const dueKey = formatDateKey_(dueDate);
-    const rowRange = sheet.getRange(idx + 2, 1, 1, HEADERS.MY_TASKS.length);
+    const rowRange = sheet.getRange(idx + 2, 1, idx + 2, HEADERS.MY_TASKS.length);
     if (dueKey < todayKey) {
       rowRange.setBackground('#fde7e9');
     } else if (dueKey === todayKey) {
       rowRange.setBackground('#d4edda');
     }
   });
+
+  applyMyTasksBodyFormatFromTasks_(sheet);
+}
+
+/**
+ * Kopiuje formatowanie wierszy danych (czcionka, wielkosc, wysokosc wiersza) z Zadania do arkusza Moje_zadania.
+ */
+function applyMyTasksBodyFormatFromTasks_(myTasksSheet) {
+  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  const tasksSheet = spreadsheet.getSheetByName(SHEET_NAMES.TASKS);
+  if (!tasksSheet) {
+    return;
+  }
+  const lastRow = myTasksSheet.getLastRow();
+  if (lastRow < 2) {
+    return;
+  }
+  const numCols = HEADERS.MY_TASKS.length;
+  tasksSheet
+    .getRange(2, 1, 2, numCols)
+    .copyTo(
+      myTasksSheet.getRange(2, 1, lastRow, numCols),
+      SpreadsheetApp.CopyPasteType.PASTE_FORMAT,
+      false
+    );
+  const bodyRowHeight = tasksSheet.getRowHeight(2);
+  for (let r = 2; r <= lastRow; r += 1) {
+    myTasksSheet.setRowHeight(r, bodyRowHeight);
+  }
+}
+
+/**
+ * Ustawia arkusz widoku „Moje zadania” w stan pusty: naglowek + „Brak otwartych zadan.”
+ * Uzywane przez procedure awaryjna czyszczenia widokow.
+ */
+function clearMyTasksViewToEmpty_(sheet) {
+  const maxCols = HEADERS.MY_TASKS.length;
+  sheet.getRange(1, 1, 1, maxCols).setValues([HEADERS.MY_TASKS]);
+  const lastRow = sheet.getLastRow();
+  if (lastRow >= 2) {
+    const range = sheet.getRange(2, 1, lastRow, maxCols);
+    range.clearContent().clearFormat();
+    range.setDataValidation(null);
+  }
+  sheet.getRange(2, 1).setValue('Brak otwartych zadan.');
+}
+
+/**
+ * Procedura awaryjna: wymusza usuniecie zadan z Moje_zadania dla wszystkich uzytkownikow.
+ * Czyści glówny arkusz „Moje_zadania” oraz wszystkie arkusze „Moje_zadania - [Imię Nazwisko]”.
+ * Jesli w trakcie operacji powstaly dodatkowe arkusze (np. tymczasowe), zostana usuniete po zakonczeniu.
+ */
+function emergencyClearAllMyTasksViews_() {
+  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  /** Arkusze utworzone w tej procedurze (np. tymczasowe); do usuniecia po zakonczeniu. */
+  const sheetsToRemove = [];
+
+  try {
+    spreadsheet.getSheets().forEach((sheet) => {
+      const name = sheet.getSheetName();
+      if (name.startsWith(MY_TASKS_SHEET_PREFIX)) {
+        clearMyTasksViewToEmpty_(sheet);
+      }
+    });
+  } finally {
+    sheetsToRemove.forEach((sheet) => {
+      try {
+        spreadsheet.deleteSheet(sheet);
+      } catch (e) {
+        // Ignoruj (np. arkusz juz usuniety).
+      }
+    });
+  }
+}
+
+/**
+ * Procedura awaryjna (menu): wymusza wyczyszczenie Moje_zadania u wszystkich uzytkownikow.
+ */
+function runEmergencyClearAllMyTasksViews() {
+  emergencyClearAllMyTasksViews_();
+  SpreadsheetApp.getUi().alert('Wyczyszczono widoki Moje_zadania (glówny arkusz i wszystkie Moje_zadania - X).');
 }
 
 function refreshClientProceduresControl() {
@@ -758,97 +918,6 @@ function resolveCurrentEmployee_() {
 function isCurrentUserManager_() {
   const employee = resolveCurrentEmployee_();
   return employee && normalizeLookupKey_(employee.role) === 'manager';
-}
-
-/** Czy dla biezacego pracownika ustawiono wymaga_odswiezenia w Pracownicy (checkbox). */
-function getEmployeeRequiresRefresh_() {
-  const employee = resolveCurrentEmployee_();
-  if (!employee) {
-    return false;
-  }
-  const rows = getObjectRows_(SHEET_NAMES.EMPLOYEES);
-  const matched = rows.find(
-    (row) =>
-      normalizeText_(row.email).toLowerCase() === employee.email.toLowerCase()
-  );
-  if (!matched) {
-    return false;
-  }
-  return toBoolean_(matched.wymaga_odswiezenia, false);
-}
-
-/** Odznacza wymaga_odswiezenia dla pracownika o podanym emailu. */
-function clearEmployeeRequiresRefresh_(email) {
-  const sheet = getSheetOrThrow_(SHEET_NAMES.EMPLOYEES);
-  const values = sheet.getDataRange().getValues();
-  if (values.length < 2) {
-    return;
-  }
-  const headers = values[0].map((h) => String(h || '').trim());
-  const colIdx = headers.findIndex(
-    (h) => normalizeLookupKey_(h) === 'wymaga_odswiezenia'
-  );
-  if (colIdx === -1) {
-    return;
-  }
-  const emailColIdx = headers.findIndex(
-    (h) => normalizeLookupKey_(h) === 'email'
-  );
-  if (emailColIdx === -1) {
-    return;
-  }
-  const emailLower = normalizeText_(email).toLowerCase();
-  for (let r = 1; r < values.length; r += 1) {
-    if (normalizeText_(values[r][emailColIdx]).toLowerCase() === emailLower) {
-      sheet.getRange(r + 1, colIdx + 1).setValue(false);
-      return;
-    }
-  }
-}
-
-/** Ustawia wymaga_odswiezenia (checkbox) dla wszystkich pracownikow – tylko manager. silent – bez toasta. */
-function setAllEmployeesRequireRefresh(silent) {
-  if (!isCurrentUserManager_()) {
-    if (!silent) {
-      SpreadsheetApp.getActiveSpreadsheet().toast(
-        'Tylko manager moze oznaczac koniecznosc odswiezenia.',
-        'Procedury',
-        4
-      );
-    }
-    return;
-  }
-  const sheet = getSheetOrThrow_(SHEET_NAMES.EMPLOYEES);
-  const values = sheet.getDataRange().getValues();
-  if (values.length < 2) {
-    return;
-  }
-  const headers = values[0].map((h) => String(h || '').trim());
-  const colIdx = headers.findIndex(
-    (h) => normalizeLookupKey_(h) === 'wymaga_odswiezenia'
-  );
-  if (colIdx === -1) {
-    if (!silent) {
-      SpreadsheetApp.getActiveSpreadsheet().toast(
-        'Brak kolumny wymaga_odswiezenia. Uruchom Procedury > 1) Utworz/odswiez strukture.',
-        'Procedury',
-        5
-      );
-    }
-    return;
-  }
-  for (let r = 1; r < values.length; r += 1) {
-    if (values[r].some((cell) => cell !== '' && cell !== null)) {
-      sheet.getRange(r + 1, colIdx + 1).setValue(true);
-    }
-  }
-  if (!silent) {
-    SpreadsheetApp.getActiveSpreadsheet().toast(
-      'Oznaczono koniecznosc odswiezenia u wszystkich pracownikow.',
-      'Procedury',
-      4
-    );
-  }
 }
 
 function getWorkerSummary() {

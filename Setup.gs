@@ -7,7 +7,6 @@ function setupWorkbook() {
   ensureSheetExists_(spreadsheet, SHEET_NAMES.CLIENT_PROCEDURES);
   ensureSheetExists_(spreadsheet, SHEET_NAMES.ASSIGNMENTS);
   ensureSheetExists_(spreadsheet, SHEET_NAMES.TASKS);
-  ensureSheetExists_(spreadsheet, SHEET_NAMES.MY_TASKS);
   ensureSheetExists_(spreadsheet, SHEET_NAMES.MANAGER_DASHBOARD);
   const dashboardSheet = getSheetOrThrow_(SHEET_NAMES.MANAGER_DASHBOARD);
   ensureSheetSize_(dashboardSheet, DASHBOARD_MIN_ROWS, 7);
@@ -37,7 +36,6 @@ function setupWorkbook() {
     HEADERS.ASSIGNMENTS
   );
   ensureSheetWithHeader_(spreadsheet, SHEET_NAMES.TASKS, HEADERS.TASKS);
-  ensureSheetWithHeader_(spreadsheet, SHEET_NAMES.MY_TASKS, HEADERS.MY_TASKS);
 
   applyFormatting_();
   applyDataHints_();
@@ -175,9 +173,6 @@ function applyFormatting_() {
   const assignmentsSheet = getSheetOrThrow_(SHEET_NAMES.ASSIGNMENTS);
   assignmentsSheet.getRange('C:D').setNumberFormat('yyyy-mm-dd');
 
-  const myTasksSheet = getSheetOrThrow_(SHEET_NAMES.MY_TASKS);
-  myTasksSheet.getRange('B:B').setNumberFormat('yyyy-mm-dd');
-
   applyStandardRowLayout_();
 }
 
@@ -212,9 +207,6 @@ function applyDataHints_() {
   employeesSheet
     .getRange('D1')
     .setNote('Zaznacz, jesli pracownik ma byc uwzgledniany przy rozdziale zadan (rotacja).');
-  employeesSheet
-    .getRange('E1')
-    .setNote('Manager zaznacza po zmianach; po odswiezeniu Moje_zadania przez pracownika odznacza sie.');
   tasksSheet
     .getRange('D1')
     .setNote('Wybierz pracownika z listy (slownik z arkusza Pracownicy).');
@@ -283,13 +275,6 @@ function applyDataValidation_() {
     .setHelpText('Zaznacz, jesli pracownik ma byc uwzgledniany przy rozdziale zadan (rotacja).')
     .build();
   employeesSheet.getRange(2, 4, employeeRows, 1).setDataValidation(aktywnyRule);
-
-  const wymagaOdswiezeniaRule = SpreadsheetApp.newDataValidation()
-    .requireCheckbox()
-    .setAllowInvalid(false)
-    .setHelpText('Manager ustawia po zmianach; znika po odswiezeniu Moje_zadania przez pracownika.')
-    .build();
-  employeesSheet.getRange(2, 5, employeeRows, 1).setDataValidation(wymagaOdswiezeniaRule);
 
   const clientNameRange = clientsSheet.getRange(2, 1, clientRows, 1);
   const procedureNameRange = proceduresSheet.getRange(2, 1, procedureRows, 1);
@@ -414,16 +399,11 @@ function migrateIdBasedModelToNameModel_() {
         getNamedValue_(row, employeesSnapshot.indices, 'aktywny', '', true),
         true
       );
-      const wymagaOdswiezenia = toBoolean_(
-        getNamedValue_(row, employeesSnapshot.indices, 'wymaga_odswiezenia', '', false),
-        false
-      );
       return [
         employeeName,
         getNamedValue_(row, employeesSnapshot.indices, 'email'),
         getNamedValue_(row, employeesSnapshot.indices, 'rola'),
         aktywny,
-        wymagaOdswiezenia,
       ];
     })
     .filter(Boolean);
@@ -579,7 +559,6 @@ function applyStandardRowLayout_() {
     SHEET_NAMES.CLIENT_PROCEDURES,
     SHEET_NAMES.ASSIGNMENTS,
     SHEET_NAMES.TASKS,
-    SHEET_NAMES.MY_TASKS,
     SHEET_NAMES.MANAGER_DASHBOARD,
   ];
 

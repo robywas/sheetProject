@@ -3,14 +3,7 @@ function generateTasks30Days() {
   const createdCount = generationResult.createdCount || 0;
   const reassignedCount = generationResult.reassignedCount || 0;
   refreshManagerDashboard();
-  try {
-    setAllEmployeesRequireRefresh(true);
-  } catch (error) {}
-  try {
-    refreshMyTasksView();
-  } catch (error) {
-    // Brak mapowania pracownika nie powinien blokowac generowania.
-  }
+  refreshAllMyTasksViews();
 
   SpreadsheetApp.getActiveSpreadsheet().toast(
     'Utworzono ' +
@@ -960,9 +953,7 @@ function onEdit(e) {
     }
   }
 
-  const isMyTasksSheet =
-    editedSheetName === SHEET_NAMES.MY_TASKS ||
-    editedSheetName.startsWith(MY_TASKS_SHEET_PREFIX);
+  const isMyTasksSheet = editedSheetName.startsWith(MY_TASKS_SHEET_PREFIX);
   if (!isMyTasksSheet || e.range.getRow() === 1) {
     return;
   }
@@ -981,7 +972,7 @@ function onEdit(e) {
     const newStatus = normalizeText_(e.range.getValue()).toUpperCase();
     const allowedStatuses = [STATUS.NEW, STATUS.IN_PROGRESS, STATUS.DONE];
     if (!allowedStatuses.includes(newStatus)) {
-      refreshMyTasksView();
+      refreshEditedMyTasksSheet_(sheet, editedSheetName);
       return;
     }
 
@@ -992,12 +983,8 @@ function onEdit(e) {
       updateTaskStatus_(taskId, newStatus);
     }
 
-    refreshMyTasksView();
+    refreshEditedMyTasksSheet_(sheet, editedSheetName);
     refreshManagerDashboard();
-    if (editedSheetName.startsWith(MY_TASKS_SHEET_PREFIX)) {
-      const employeeName = editedSheetName.slice(MY_TASKS_SHEET_PREFIX.length);
-      writeMyTasksViewToSheet_(sheet, employeeName);
-    }
     return;
   }
 
@@ -1009,11 +996,17 @@ function onEdit(e) {
       return;
     }
     updateTaskNote_(taskId, e.range.getValue());
-    if (editedSheetName.startsWith(MY_TASKS_SHEET_PREFIX)) {
-      const employeeName = editedSheetName.slice(MY_TASKS_SHEET_PREFIX.length);
-      writeMyTasksViewToSheet_(sheet, employeeName);
-    }
+    refreshEditedMyTasksSheet_(sheet, editedSheetName);
   }
+}
+
+/** Odswieza widok w edytowanym arkuszu Moje_zadania - X (per pracownik). */
+function refreshEditedMyTasksSheet_(sheet, editedSheetName) {
+  if (!editedSheetName.startsWith(MY_TASKS_SHEET_PREFIX)) {
+    return;
+  }
+  const employeeName = editedSheetName.slice(MY_TASKS_SHEET_PREFIX.length);
+  writeMyTasksViewToSheet_(sheet, employeeName);
 }
 
 function enforceMasterDataIntegerRulesOnEdit_(sheet, range) {

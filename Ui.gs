@@ -1,74 +1,43 @@
 function onOpen() {
-  // Nie ustawiamy widocznosci arkuszy przy otwarciu: w Google Sheets jest ona globalna (dla calego dokumentu).
-  // Gdy pracownik otworzy arkusz, ukrycie zakladek zmienialoby widok tez u managera w innej przegladarce.
+  // Menu musi byc dodane najpierw – inaczej przy bledzie dialogu (np. u pracownika) menu by sie nie pojawilo.
   SpreadsheetApp.getUi()
     .createMenu('Procedury')
     .addItem('1) Utworz/odswiez strukture', 'setupWorkbook')
     .addItem('2) Dodaj dane przykladowe', 'seedSampleData')
     .addSeparator()
     .addItem('3) Wygeneruj zadania (30 dni)', 'generateTasks30Days')
-    .addItem('4) Odswiez moje zadania', 'refreshMyTasksView')
+    .addItem('4) Odswiez Moje_zadania (wszyscy pracownicy)', 'refreshAllMyTasksViews')
     .addItem('5) Odswiez dashboard managera', 'refreshManagerDashboard')
     .addItem('6) Odswiez kontrole (Klienci_Procedury)', 'refreshClientProceduresControl')
     .addItem('7) Wyslij powiadomienia email (termin / opoznienia)', 'sendTaskReminderEmails')
-    .addItem('8) Oznacz koniecznosc odswiezenia u pracownikow (manager)', 'setAllEmployeesRequireRefresh')
+    .addSeparator()
+    .addItem('Awaryjnie: wyczysc Moje_zadania (wszyscy)', 'runEmergencyClearAllMyTasksViews')
     .addSeparator()
     .addItem('Panel pracownika', 'openWorkerSidebar')
     .addItem('Panel managera', 'openManagerSidebar')
     .addToUi();
+
+  // Przy kazdym otwarciu odswiez Moje_zadania dla biezacego uzytkownika. Wywolanie przez dialog,
+  // bo w prostym triggerze onOpen getActiveUser() bywa pusty; dialog laduje w kontekście otwierajacego.
+  // (Bez tego pracownik widzialby zadania poprzedniego uzytkownika. Nie sprawdzamy aktywnej zakladki –
+  // przy otwarciu to czesto pierwszy arkusz, a nie Moje_zadania.)
+  try {
+    const html = HtmlService.createHtmlOutputFromFile('RefreshMyTasksDialog')
+      .setWidth(260)
+      .setHeight(80);
+    SpreadsheetApp.getUi().showModalDialog(html, 'Moje zadania');
+  } catch (e) {
+    // Nie blokuj; uzytkownik moze wybrac z menu „Odswiez moje zadania”.
+  }
 }
 
 function onInstall() {
   onOpen();
 }
 
-/**
- * Prosty trigger: przy zmianie zaznaczenia (w tym przejsciu na zakladke). Gdy uzytkownik jest na Moje_zadania:
- * – jesli w Pracownicy ma zaznaczone wymaga_odswiezenia, odswieza widok i odznacza;
- * – w przeciwnym razie odswieza co MY_TASKS_AUTO_REFRESH_MINUTES (fallback).
- */
-function onSelectionChange(e) {
-  if (!e || !e.range) {
-    return;
-  }
-  const sheetName = e.range.getSheet().getName();
-  if (sheetName !== SHEET_NAMES.MY_TASKS) {
-    return;
-  }
-  const currentUser = getCurrentUserEmail_();
-
-  if (getEmployeeRequiresRefresh_()) {
-    try {
-      refreshMyTasksView();
-      clearEmployeeRequiresRefresh_(currentUser);
-    } catch (err) {}
-    return;
-  }
-
-  const props = PropertiesService.getDocumentProperties();
-  const now = Date.now();
-  const lastRefresh = parseInt(props.getProperty('myTasksLastRefresh') || '0', 10);
-  const lastUser = props.getProperty('myTasksLastUser') || '';
-  const intervalMs = MY_TASKS_AUTO_REFRESH_MINUTES * 60 * 1000;
-  if (lastUser === currentUser && now - lastRefresh < intervalMs) {
-    return;
-  }
-  try {
-    refreshMyTasksView();
-  } catch (err) {
-    return;
-  }
-  props.setProperty('myTasksLastRefresh', String(now));
-  props.setProperty('myTasksLastUser', currentUser);
-}
-
 function refreshAllViews() {
   refreshManagerDashboard();
-  try {
-    refreshMyTasksView();
-  } catch (error) {
-    // Widok pracownika jest zalezny od mapowania email -> pracownik.
-  }
+  refreshAllMyTasksViews();
 }
 
 function openWorkerSidebar() {

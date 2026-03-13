@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top" />
+  </head>
+  <body>
+    <p>Aktualizowanie listy zadan...</p>
+    <script>
+      (function() {
+        function closeDialog() {
+          google.script.host.close();
+        }
+        google.script.run
+          .withSuccessHandler(closeDialog)
+          .withFailureHandler(closeDialog)
+          .refreshMyTasksView();
+      })();
+    </script>
+  </body>
+</html>

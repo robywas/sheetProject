@@ -5,7 +5,6 @@ const SHEET_NAMES = Object.freeze({
   CLIENT_PROCEDURES: 'Klienci_Procedury',
   ASSIGNMENTS: 'Przypisania',
   TASKS: 'Zadania',
-  MY_TASKS: 'Moje_zadania',
   MANAGER_DASHBOARD: 'Dashboard_managera',
 });
 
@@ -29,7 +28,7 @@ const HEADERS = Object.freeze({
     'interwal',
   ],
   CLIENTS: ['klient'],
-  EMPLOYEES: ['pracownik', 'email', 'rola', 'aktywny', 'wymaga_odswiezenia'],
+  EMPLOYEES: ['pracownik', 'email', 'rola', 'aktywny'],
   CLIENT_PROCEDURES: [
     'klient',
     'procedura',
@@ -103,8 +102,6 @@ const MY_TASKS_COL = Object.freeze({
 const DEPLOY_ID = '6318074';
 
 const DEFAULT_GENERATION_DAYS = 30;
-/** Co ile minut odswiezyc Moje_zadania przy byciu na zakladce (onSelectionChange). */
-const MY_TASKS_AUTO_REFRESH_MINUTES = 10;
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 const SCHEDULE_LAST_DAY_TOKEN = 'OSTATNI';
 const DEFAULT_SHEET_MIN_ROWS = 11;
