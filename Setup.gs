@@ -164,8 +164,10 @@ function ensureSheetWithHeader_(spreadsheet, sheetName, headers) {
 
 function applyFormatting_() {
   const taskSheet = getSheetOrThrow_(SHEET_NAMES.TASKS);
-  taskSheet.getRange('E:E').setNumberFormat('yyyy-mm-dd');
-  taskSheet.getRange('G:H').setNumberFormat('yyyy-mm-dd hh:mm');
+  taskSheet.getRange('F:F').setNumberFormat('yyyy-mm-dd');
+  taskSheet.getRange('G:G').setNumberFormat('yyyy-mm-dd hh:mm');
+  taskSheet.getRange('L:L').setNumberFormat('yyyy-mm-dd hh:mm');
+  taskSheet.hideColumns(1);
 
   const clientProceduresSheet = getSheetOrThrow_(SHEET_NAMES.CLIENT_PROCEDURES);
   clientProceduresSheet.getRange('C:C').setNumberFormat('yyyy-mm-dd');
@@ -306,7 +308,7 @@ function applyDataValidation_() {
   assignmentsSheet
     .getRange(2, 2, assignmentRows, 1)
     .setDataValidation(optionalEmployeeNameRule);
-  tasksSheet.getRange(2, 4, taskRows, 1).setDataValidation(optionalEmployeeNameRule);
+  tasksSheet.getRange(2, 4, taskRows, 4).setDataValidation(optionalEmployeeNameRule);
 
 }
 
@@ -512,14 +514,14 @@ function migrateIdBasedModelToNameModel_() {
         clientName,
         procedureName,
         employeeName,
-        dueDate,
         getNamedValue_(row, tasksSnapshot.indices, 'status', '', STATUS.NEW),
-        getNamedValue_(row, tasksSnapshot.indices, 'created_at'),
+        dueDate,
         getNamedValue_(row, tasksSnapshot.indices, 'completed_at'),
-        getNamedValue_(row, tasksSnapshot.indices, 'notes'),
         getNamedValue_(row, tasksSnapshot.indices, 'uwagi'),
+        getNamedValue_(row, tasksSnapshot.indices, 'notes'),
         taskKey,
         getNamedValue_(row, tasksSnapshot.indices, 'dni_ostrzezenia', '', 0),
+        getNamedValue_(row, tasksSnapshot.indices, 'created_at'),
       ];
     })
     .filter((row) => normalizeText_(row[1]) && normalizeText_(row[2]));

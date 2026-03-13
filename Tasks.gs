@@ -223,14 +223,14 @@ function generateRecurringTasks(daysAhead) {
         clientName,
         procedureName,
         employeeName,
-        normalizedDueDate,
         STATUS.NEW,
-        new Date(),
-        '',
+        normalizedDueDate,
         '',
         relationUwagi,
+        '',
         taskKey,
         procedure.warningDays || 0,
+        new Date(),
       ]);
       previousEmployeeName = employeeName || previousEmployeeName;
       existingKeys.add(taskKey);
@@ -250,7 +250,7 @@ function generateRecurringTasks(daysAhead) {
   if (reassignmentUpdates.length > 0) {
     const taskSheet = getSheetOrThrow_(SHEET_NAMES.TASKS);
     reassignmentUpdates.forEach((update) => {
-      taskSheet.getRange(update.rowNumber, 4).setValue(update.employeeName);
+      taskSheet.getRange(update.rowNumber, TASKS_COL.PRACOWNIK).setValue(update.employeeName);
     });
   }
 
@@ -277,7 +277,7 @@ function markTaskAsDone_(taskId) {
     return null;
   }
 
-  const taskIdRange = sheet.getRange(2, 1, lastRow - 1, 1);
+  const taskIdRange = sheet.getRange(2, TASKS_COL.TASK_ID, lastRow - 1, TASKS_COL.TASK_ID);
   const match = taskIdRange
     .createTextFinder(taskId)
     .matchEntireCell(true)
@@ -290,19 +290,19 @@ function markTaskAsDone_(taskId) {
   const row = match.getRow();
   const rowValues = sheet.getRange(row, 1, 1, HEADERS.TASKS.length).getValues()[0];
   const completedTask = {
-    taskId: normalizeText_(rowValues[0]),
-    clientName: normalizeText_(rowValues[1]),
-    procedureName: normalizeText_(rowValues[2]),
-    employeeName: normalizeText_(rowValues[3]),
-    dueDate: toDate_(rowValues[4]),
-    status: normalizeText_(rowValues[5]),
+    taskId: normalizeText_(rowValues[TASKS_COL.TASK_ID - 1]),
+    clientName: normalizeText_(rowValues[TASKS_COL.KLIENT - 1]),
+    procedureName: normalizeText_(rowValues[TASKS_COL.PROCEDURA - 1]),
+    employeeName: normalizeText_(rowValues[TASKS_COL.PRACOWNIK - 1]),
+    dueDate: toDate_(rowValues[TASKS_COL.DUE_DATE - 1]),
+    status: normalizeText_(rowValues[TASKS_COL.STATUS - 1]),
   };
   if (completedTask.status === STATUS.DONE) {
     return null;
   }
 
-  sheet.getRange(row, 6).setValue(STATUS.DONE);
-  sheet.getRange(row, 8).setValue(new Date());
+  sheet.getRange(row, TASKS_COL.STATUS).setValue(STATUS.DONE);
+  sheet.getRange(row, TASKS_COL.COMPLETED_AT).setValue(new Date());
   sortTasksByStatusAndDueDesc_();
   return completedTask;
 }
@@ -314,7 +314,7 @@ function updateTaskNote_(taskId, note) {
     return;
   }
 
-  const taskIdRange = sheet.getRange(2, 1, lastRow - 1, 1);
+  const taskIdRange = sheet.getRange(2, TASKS_COL.TASK_ID, lastRow - 1, TASKS_COL.TASK_ID);
   const match = taskIdRange
     .createTextFinder(taskId)
     .matchEntireCell(true)
@@ -324,7 +324,7 @@ function updateTaskNote_(taskId, note) {
     return;
   }
 
-  sheet.getRange(match.getRow(), 9).setValue(note);
+  sheet.getRange(match.getRow(), TASKS_COL.NOTES).setValue(note);
 }
 
 function updateTaskStatus_(taskId, newStatus) {
@@ -334,7 +334,7 @@ function updateTaskStatus_(taskId, newStatus) {
     return false;
   }
 
-  const taskIdRange = sheet.getRange(2, 1, lastRow - 1, 1);
+  const taskIdRange = sheet.getRange(2, TASKS_COL.TASK_ID, lastRow - 1, TASKS_COL.TASK_ID);
   const match = taskIdRange
     .createTextFinder(taskId)
     .matchEntireCell(true)
@@ -344,11 +344,11 @@ function updateTaskStatus_(taskId, newStatus) {
   }
 
   const rowNumber = match.getRow();
-  sheet.getRange(rowNumber, 6).setValue(newStatus);
+  sheet.getRange(rowNumber, TASKS_COL.STATUS).setValue(newStatus);
   if (newStatus === STATUS.DONE) {
-    sheet.getRange(rowNumber, 8).setValue(new Date());
+    sheet.getRange(rowNumber, TASKS_COL.COMPLETED_AT).setValue(new Date());
   } else {
-    sheet.getRange(rowNumber, 8).clearContent();
+    sheet.getRange(rowNumber, TASKS_COL.COMPLETED_AT).clearContent();
   }
   sortTasksByStatusAndDueDesc_();
   return true;
@@ -805,14 +805,14 @@ function createNextTaskFromCompleted_(completedTask) {
     completedTask.clientName,
     procedureConfig.procedureName,
     employeeName,
-    nextDueDate,
     STATUS.NEW,
-    new Date(),
-    '',
+    nextDueDate,
     '',
     uwagi,
+    '',
     taskKey,
     procedureConfig.warningDays || 0,
+    new Date(),
   ];
 
   const taskSheet = getSheetOrThrow_(SHEET_NAMES.TASKS);
@@ -874,23 +874,23 @@ function sortTasksByStatusAndDueDesc_() {
   };
 
   rows.sort((left, right) => {
-    const leftDone = normalizeText_(left[5]).toUpperCase() === STATUS.DONE;
-    const rightDone = normalizeText_(right[5]).toUpperCase() === STATUS.DONE;
+    const leftDone = normalizeText_(left[TASKS_COL.STATUS - 1]).toUpperCase() === STATUS.DONE;
+    const rightDone = normalizeText_(right[TASKS_COL.STATUS - 1]).toUpperCase() === STATUS.DONE;
     if (leftDone !== rightDone) {
       return leftDone ? 1 : -1;
     }
 
-    const dueDiff = toTimestamp(left[4]) - toTimestamp(right[4]);
+    const dueDiff = toTimestamp(left[TASKS_COL.DUE_DATE - 1]) - toTimestamp(right[TASKS_COL.DUE_DATE - 1]);
     if (dueDiff !== 0) {
       return dueDiff;
     }
 
-    const createdDiff = toTimestamp(right[6]) - toTimestamp(left[6]);
+    const createdDiff = toTimestamp(right[TASKS_COL.CREATED_AT - 1]) - toTimestamp(left[TASKS_COL.CREATED_AT - 1]);
     if (createdDiff !== 0) {
       return createdDiff;
     }
 
-    return normalizeText_(left[0]).localeCompare(normalizeText_(right[0]));
+    return normalizeText_(left[TASKS_COL.TASK_ID - 1]).localeCompare(normalizeText_(right[TASKS_COL.TASK_ID - 1]));
   });
 
   range.setValues(rows);
@@ -903,9 +903,9 @@ function highlightLateCompletedTasks_(taskSheet, rows) {
   }
 
   const statusBackgrounds = rows.map((row) => {
-    const status = normalizeText_(row[5]).toUpperCase();
-    const dueDate = toDate_(row[4]);
-    const completedAt = toDate_(row[7]);
+    const status = normalizeText_(row[TASKS_COL.STATUS - 1]).toUpperCase();
+    const dueDate = toDate_(row[TASKS_COL.DUE_DATE - 1]);
+    const completedAt = toDate_(row[TASKS_COL.COMPLETED_AT - 1]);
     const isLateDone =
       status === STATUS.DONE &&
       dueDate &&
@@ -915,7 +915,7 @@ function highlightLateCompletedTasks_(taskSheet, rows) {
     return [isLateDone ? '#fde7e9' : ''];
   });
 
-  taskSheet.getRange(2, 6, rows.length, 1).setBackgrounds(statusBackgrounds);
+  taskSheet.getRange(2, TASKS_COL.STATUS, rows.length + 1, TASKS_COL.STATUS).setBackgrounds(statusBackgrounds);
 }
 
 function buildNameMapByKey_(rows, fieldCandidates) {
@@ -958,11 +958,11 @@ function onEdit(e) {
       return;
     }
     const editedColumn = e.range.getColumn();
-    if (editedColumn === 5) {
+    if (editedColumn === TASKS_COL.STATUS) {
       sortTasksByStatusAndDueDesc_();
       return;
     }
-    if (editedColumn === 4) {
+    if (editedColumn === TASKS_COL.PRACOWNIK) {
       try {
         // Odswiezamy widok biezacego uzytkownika, aby od razu zobaczyl
         // efekt przepisania zadania do innego pracownika.

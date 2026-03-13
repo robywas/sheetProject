@@ -48,14 +48,14 @@ const HEADERS = Object.freeze({
     'klient',
     'procedura',
     'pracownik',
-    'due_date',
     'status',
-    'created_at',
+    'due_date',
     'completed_at',
-    'notes',
     'uwagi',
+    'notes',
     'task_key',
     'dni_ostrzezenia',
+    'created_at',
   ],
   MY_TASKS: [
     'task_id',
@@ -89,6 +89,22 @@ const MANAGER_FILTER = Object.freeze({
   DEFAULT_RISK_DAYS: 2,
 });
 
+/** Indeksy kolumn arkusza Zadania (1-based). Kolejnosc: task_id, klient, procedura, pracownik, status, due_date, completed_at, uwagi, notes, task_key, dni_ostrzezenia, created_at. */
+const TASKS_COL = Object.freeze({
+  TASK_ID: 1,
+  KLIENT: 2,
+  PROCEDURA: 3,
+  PRACOWNIK: 4,
+  STATUS: 5,
+  DUE_DATE: 6,
+  COMPLETED_AT: 7,
+  UWAGI: 8,
+  NOTES: 9,
+  TASK_KEY: 10,
+  DNI_OSTRZEZENIA: 11,
+  CREATED_AT: 12,
+});
+
 const MY_TASKS_COL = Object.freeze({
   TASK_ID: 1,
   DUE_DATE: 2,
@@ -103,7 +119,7 @@ const MY_TASKS_COL = Object.freeze({
  * Dla kopiowania formatowania: indeks kolumny w Zadania (1-based) odpowiadajacy kolumnie w Zadania - X.
  * Kolejnosc: task_id, termin(due_date), klient, procedura, status, uwagi, notatka(notes).
  */
-const TASKS_COL_FOR_MY_TASKS_FORMAT = Object.freeze([1, 5, 2, 3, 6, 10, 9]);
+const TASKS_COL_FOR_MY_TASKS_FORMAT = Object.freeze([1, 6, 2, 3, 5, 8, 9]);
 
 /** Id wersji (short commit) – ustaw na aktualny po deployu (git rev-parse --short HEAD). */
 const DEPLOY_ID = '6318074';
