@@ -659,7 +659,11 @@ function getMonthlyDueDatesBetween_(
     }
     const workingDate = getFirstWorkingDayOnOrAfter_(dueDate);
     if (workingDate > horizon) {
-      return;
+      const daysOver =
+        (workingDate.getTime() - normalizeDate_(horizon).getTime()) / ONE_DAY_MS;
+      if (daysOver > 7) {
+        return;
+      }
     }
     dueDates.push(workingDate);
   });
