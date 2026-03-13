@@ -226,6 +226,7 @@ function generateRecurringTasks(daysAhead) {
         new Date(),
         '',
         '',
+        '',
         taskKey,
         procedure.warningDays || 0,
       ]);
@@ -787,6 +788,7 @@ function createNextTaskFromCompleted_(completedTask) {
     nextDueDate,
     STATUS.NEW,
     new Date(),
+    '',
     '',
     '',
     taskKey,

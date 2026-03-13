@@ -517,6 +517,7 @@ function migrateIdBasedModelToNameModel_() {
         getNamedValue_(row, tasksSnapshot.indices, 'created_at'),
         getNamedValue_(row, tasksSnapshot.indices, 'completed_at'),
         getNamedValue_(row, tasksSnapshot.indices, 'notes'),
+        getNamedValue_(row, tasksSnapshot.indices, 'uwagi'),
         taskKey,
         getNamedValue_(row, tasksSnapshot.indices, 'dni_ostrzezenia', '', 0),
       ];

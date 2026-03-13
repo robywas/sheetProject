@@ -53,6 +53,7 @@ const HEADERS = Object.freeze({
     'created_at',
     'completed_at',
     'notes',
+    'uwagi',
     'task_key',
     'dni_ostrzezenia',
   ],
@@ -102,7 +103,7 @@ const MY_TASKS_COL = Object.freeze({
  * Dla kopiowania formatowania: indeks kolumny w Zadania (1-based) odpowiadajacy kolumnie w Moje_zadania.
  * Kolejnosc: task_id, termin(due_date), klient, procedura, status, uwagi, notatka(notes).
  */
-const TASKS_COL_FOR_MY_TASKS_FORMAT = Object.freeze([1, 5, 2, 3, 6, 9, 9]);
+const TASKS_COL_FOR_MY_TASKS_FORMAT = Object.freeze([1, 5, 2, 3, 6, 10, 9]);
 
 /** Id wersji (short commit) – ustaw na aktualny po deployu (git rev-parse --short HEAD). */
 const DEPLOY_ID = '6318074';
