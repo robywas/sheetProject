@@ -10,7 +10,8 @@ function refreshMyTasksView() {
 
 /**
  * Formatuje nowo utworzony arkusz Moje_zadania na wzor Zadania:
- * naglowek (czcionka, wyrownanie, tlo, itd.), wysokosc wierszy, zamrozenie wiersza 1, ukrycie kolumny A (task_id).
+ * naglowek i dane – format kolumna po kolumnie (Zadania.due_date→termin, procedura→procedura itd.),
+ * wysokosc wierszy, szerokosc kolumn, zamrozenie wiersza 1, ukrycie kolumny A (task_id).
  */
 function formatNewMyTasksSheetFromTasks_(myTasksSheet) {
   const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
@@ -18,21 +19,26 @@ function formatNewMyTasksSheetFromTasks_(myTasksSheet) {
   if (!tasksSheet) {
     return;
   }
-  const numCols = HEADERS.MY_TASKS.length;
   const pasteFormat = SpreadsheetApp.CopyPasteType.PASTE_FORMAT;
+  const numCols = TASKS_COL_FOR_MY_TASKS_FORMAT.length;
 
-  tasksSheet.getRange(1, 1, 1, numCols).copyTo(
-    myTasksSheet.getRange(1, 1, 1, numCols),
-    pasteFormat,
-    false
-  );
+  for (let c = 0; c < numCols; c += 1) {
+    const tasksCol = TASKS_COL_FOR_MY_TASKS_FORMAT[c];
+    const myCol = c + 1;
+    tasksSheet.getRange(1, tasksCol, 1, tasksCol).copyTo(
+      myTasksSheet.getRange(1, myCol, 1, myCol),
+      pasteFormat,
+      false
+    );
+    tasksSheet.getRange(2, tasksCol, 2, tasksCol).copyTo(
+      myTasksSheet.getRange(2, myCol, 2, myCol),
+      pasteFormat,
+      false
+    );
+    myTasksSheet.setColumnWidth(myCol, tasksSheet.getColumnWidth(tasksCol));
+  }
   myTasksSheet.setRowHeight(1, tasksSheet.getRowHeight(1));
   myTasksSheet.setRowHeight(2, tasksSheet.getRowHeight(2));
-  tasksSheet.getRange(2, 1, 2, numCols).copyTo(
-    myTasksSheet.getRange(2, 1, 2, numCols),
-    pasteFormat,
-    false
-  );
   myTasksSheet.setFrozenRows(1);
   myTasksSheet.hideColumns(1);
 }
@@ -162,6 +168,8 @@ function writeMyTasksViewToSheet_(sheet, employeeName) {
   sheet.getRange(2, MY_TASKS_COL.STATUS, rows.length, 1).setDataValidation(statusRule);
   sheet.getRange(2, MY_TASKS_COL.DUE_DATE, rows.length, 1).setNumberFormat('yyyy-mm-dd');
 
+  applyMyTasksBodyFormatFromTasks_(sheet);
+
   const today = normalizeDate_(new Date());
   const todayKey = formatDateKey_(today);
   rows.forEach((row, idx) => {
@@ -177,12 +185,11 @@ function writeMyTasksViewToSheet_(sheet, employeeName) {
       rowRange.setBackground('#d4edda');
     }
   });
-
-  applyMyTasksBodyFormatFromTasks_(sheet);
 }
 
 /**
- * Kopiuje formatowanie wierszy danych (czcionka, wielkosc, wysokosc wiersza) z Zadania do arkusza Moje_zadania.
+ * Kopiuje formatowanie wierszy danych z Zadania do Moje_zadania kolumna po kolumnie
+ * (Zadania.due_date→termin, procedura→procedura itd.) oraz szerokosc kolumn i wysokosc wierszy.
  */
 function applyMyTasksBodyFormatFromTasks_(myTasksSheet) {
   const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
@@ -194,14 +201,21 @@ function applyMyTasksBodyFormatFromTasks_(myTasksSheet) {
   if (lastRow < 2) {
     return;
   }
-  const numCols = HEADERS.MY_TASKS.length;
-  tasksSheet
-    .getRange(2, 1, 2, numCols)
-    .copyTo(
-      myTasksSheet.getRange(2, 1, lastRow, numCols),
-      SpreadsheetApp.CopyPasteType.PASTE_FORMAT,
-      false
-    );
+  const pasteFormat = SpreadsheetApp.CopyPasteType.PASTE_FORMAT;
+  const numCols = TASKS_COL_FOR_MY_TASKS_FORMAT.length;
+
+  for (let c = 0; c < numCols; c += 1) {
+    const tasksCol = TASKS_COL_FOR_MY_TASKS_FORMAT[c];
+    const myCol = c + 1;
+    tasksSheet
+      .getRange(2, tasksCol, 2, tasksCol)
+      .copyTo(
+        myTasksSheet.getRange(2, myCol, lastRow, myCol),
+        pasteFormat,
+        false
+      );
+    myTasksSheet.setColumnWidth(myCol, tasksSheet.getColumnWidth(tasksCol));
+  }
   const bodyRowHeight = tasksSheet.getRowHeight(2);
   for (let r = 2; r <= lastRow; r += 1) {
     myTasksSheet.setRowHeight(r, bodyRowHeight);
