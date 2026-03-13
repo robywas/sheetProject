@@ -290,6 +290,7 @@ function refreshClientProceduresControl() {
     procedura: normalizeText_(row.procedura || row.procedure_id),
     due_date: toDate_(row.due_date),
     pracownik: normalizeText_(row.pracownik || row.employee_id),
+    status: normalizeText_(row.status),
   }));
 
   const statuses = relationRows.map((row) => {
@@ -299,7 +300,8 @@ function refreshClientProceduresControl() {
       (t) =>
         normalizeLookupKey_(t.klient) === clientKey &&
         normalizeLookupKey_(t.procedura) === procedureKey &&
-        t.due_date
+        t.due_date &&
+        normalizeText_(t.status) !== STATUS.DONE
     );
     if (tasksForRelation.length === 0) {
       return ['Brak zadań'];

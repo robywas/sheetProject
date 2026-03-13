@@ -916,7 +916,7 @@ function highlightLateCompletedTasks_(taskSheet, rows) {
     return [isLateDone ? '#fde7e9' : ''];
   });
 
-  taskSheet.getRange(2, TASKS_COL.STATUS, rows.length, TASKS_COL.STATUS).setBackgrounds(statusBackgrounds);
+  taskSheet.getRange(2, TASKS_COL.STATUS, rows.length, 1).setBackgrounds(statusBackgrounds);
 }
 
 function buildNameMapByKey_(rows, fieldCandidates) {
