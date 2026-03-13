@@ -54,6 +54,25 @@ function openManagerSidebar() {
 function openClientPanel() {
   const html = HtmlService.createHtmlOutputFromFile('ClientPanel')
     .setTitle('Zadania klienta')
-    .setWidth(380);
+    .setWidth(760);
   SpreadsheetApp.getUi().showSidebar(html);
+}
+
+/**
+ * Wywolywane przez trigger „Przy zmianie zaznaczenia”. Otwiera Panel Klienci,
+ * gdy uzytkownik zaznaczy wiersz z danymi na arkuszu Klienci.
+ * Trigger: Zdarzenia arkusza > Przy zmianie zaznaczenia > onSelectionChange
+ */
+function onSelectionChange(e) {
+  if (!e || !e.range) {
+    return;
+  }
+  const sheet = e.range.getSheet();
+  if (sheet.getName() !== SHEET_NAMES.CLIENTS) {
+    return;
+  }
+  if (e.range.getRow() < 2) {
+    return;
+  }
+  openClientPanel();
 }

@@ -527,6 +527,14 @@ function applySheetVisibilityByRole_() {
 }
 
 /**
+ * Zwraca nazwe aktywnego arkusza (dla panelu Klienci – zamykanie przy zmianie arkusza).
+ */
+function getActiveSheetName() {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+  return sheet ? sheet.getName() : '';
+}
+
+/**
  * Dla panelu Klienci: zwraca nazwe klienta z aktualnie zaznaczonego wiersza na arkuszu Klienci.
  * Gdy aktywny arkusz to nie Klienci lub zaznaczony wiersz to naglowek – zwraca null.
  */

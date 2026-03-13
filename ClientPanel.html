@@ -132,33 +132,46 @@
           document.getElementById('error').textContent = msg || '';
         }
 
+        var SHEET_NAME_KLIENCI = 'Klienci';
+
         function fetchAndShow() {
           setError('');
           google.script.run
-            .withSuccessHandler(function(result) {
-              if (!result || !result.clientName) {
-                document.getElementById('clientName').textContent = 'Zaznacz wiersz na arkuszu Klienci';
-                lastClientName = null;
-                renderTasks([]);
+            .withSuccessHandler(function(activeSheetName) {
+              if (activeSheetName !== SHEET_NAME_KLIENCI) {
+                try { google.script.host.close(); } catch (e) {}
                 return;
               }
-              document.getElementById('clientName').textContent = result.clientName;
-              lastClientName = result.clientName;
               google.script.run
-                .withSuccessHandler(function(tasks) {
-                  renderTasks(tasks || []);
-                  setStatus('');
+                .withSuccessHandler(function(result) {
+                  if (!result || !result.clientName) {
+                    document.getElementById('clientName').textContent = 'Zaznacz wiersz na arkuszu Klienci';
+                    lastClientName = null;
+                    renderTasks([]);
+                    return;
+                  }
+                  document.getElementById('clientName').textContent = result.clientName;
+                  lastClientName = result.clientName;
+                  google.script.run
+                    .withSuccessHandler(function(tasks) {
+                      renderTasks(tasks || []);
+                      setStatus('');
+                    })
+                    .withFailureHandler(function(err) {
+                      setError(err && err.message ? err.message : String(err));
+                      renderTasks([]);
+                    })
+                    .getTasksForClientInMonth(result.clientName, currentYear, currentMonth);
                 })
                 .withFailureHandler(function(err) {
                   setError(err && err.message ? err.message : String(err));
-                  renderTasks([]);
                 })
-                .getTasksForClientInMonth(result.clientName, currentYear, currentMonth);
+                .getSelectedClientFromKlienciSheet();
             })
-            .withFailureHandler(function(err) {
-              setError(err && err.message ? err.message : String(err));
+            .withFailureHandler(function() {
+              try { google.script.host.close(); } catch (e) {}
             })
-            .getSelectedClientFromKlienciSheet();
+            .getActiveSheetName();
         }
 
         function startPolling() {
