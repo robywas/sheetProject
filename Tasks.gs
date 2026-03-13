@@ -1003,6 +1003,7 @@ function onEdit(e) {
       if (newStatus === STATUS.DONE) {
         const completedTask = markTaskAsDone_(taskId);
         createNextTaskFromCompleted_(completedTask);
+        refreshEditedMyTasksSheet_(sheet, editedSheetName);
       } else {
         updateTaskStatus_(taskId, newStatus);
       }

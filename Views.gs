@@ -108,7 +108,36 @@ function writeMyTasksViewToSheet_(sheet, employeeName) {
   const relationNotesByKey = buildClientProcedureNotesByKey_(
     getObjectRows_(SHEET_NAMES.CLIENT_PROCEDURES)
   );
-  const taskRows = getObjectRows_(SHEET_NAMES.TASKS);
+  const taskSheet = getSheetOrThrow_(SHEET_NAMES.TASKS);
+  const lastTaskRow = taskSheet.getLastRow();
+  const taskRows =
+    lastTaskRow < 2
+      ? []
+      : (() => {
+          const values = taskSheet
+            .getRange(1, 1, lastTaskRow, HEADERS.TASKS.length)
+            .getValues();
+          const headers = values[0].map((h) => String(h || '').trim());
+          return values
+            .slice(1)
+            .filter((row) =>
+              row.some((cell) => cell !== '' && cell !== null)
+            )
+            .map((row) => {
+              const obj = {};
+              headers.forEach((header, idx) => {
+                obj[header] = row[idx];
+                const normalizedHeader = normalizeLookupKey_(header);
+                if (
+                  normalizedHeader &&
+                  typeof obj[normalizedHeader] === 'undefined'
+                ) {
+                  obj[normalizedHeader] = row[idx];
+                }
+              });
+              return obj;
+            });
+        })();
   const openTasks = taskRows
     .filter(
       (row) =>
