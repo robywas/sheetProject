@@ -6,7 +6,7 @@ Gotowy szablon Google Apps Script do obslugi regularnych procedur medyczno-opiek
 - powiazanie procedur z klientami,
 - przypisania klientow do pracownikow w okresach czasu,
 - widok pracownika (arkusze "Zadania - [Imię Nazwisko]"),
-- widok managera ("Dashboard_managera" + panel boczny).
+- panel managera (KPI + generowanie zadan).
 
 Model danych dziala na nazwach (`klient`, `pracownik`, `procedura`) bez osobnych kolumn ID.
 
@@ -21,7 +21,6 @@ Po uruchomieniu `setupWorkbook()` skrypt zaklada:
 5. `Przypisania`
 6. `Zadania`
 7. `Zadania - [pracownik]` (po jednym arkuszu na aktywnego pracownika)
-8. `Dashboard_managera`
 
 ## 2) Kluczowe funkcje
 
@@ -53,15 +52,6 @@ Po uruchomieniu `setupWorkbook()` skrypt zaklada:
   - pozwala zmieniac status (`NOWE`, `W_TRAKCIE`, `WYKONANE`),
   - pokazuje `uwagi` z arkusza `Klienci_Procedury`.
 
-- `refreshManagerDashboard()`  
-  Buduje dashboard managera:
-  - KPI (otwarte, przeterminowane, termin <= horyzont, wykonanie 30 dni),
-  - lista zagrozonych terminow,
-  - obciazenie pracownikow,
-  - podsumowanie klientow,
-  - globalny status wykonania dla wszystkich klientow,
-  - filtry: status, pracownik, horyzont i prog zagrozenia.
-
 - `onEdit(e)`  
   Gdy pracownik zmieni status w arkuszu „Zadania - X”:
   - status `WYKONANE` zamyka zadanie,
@@ -78,15 +68,14 @@ Po odswiezeniu arkusza pojawia sie menu `Procedury`:
 2. `Dodaj dane przykladowe`
 3. `Wygeneruj zadania (30 dni)`
 4. `Odswiez Zadania - X (wszyscy pracownicy)`
-5. `Odswiez dashboard managera`
-6. `Odswiez kontrole (Klienci_Procedury)`
-7. `Wyslij powiadomienia email (termin / opoznienia)`
-8. `Panel pracownika` / `Panel managera`
+5. `Odswiez kontrole (Klienci_Procedury)`
+6. `Wyslij powiadomienia email (termin / opoznienia)`
+7. `Panel pracownika` / `Panel managera`
 
 Panele boczne:
 
 - `WorkerSidebar.html` - szybkie KPI dla pracownika + odswiezenie widoku.
-- `ManagerSidebar.html` - KPI managera + generowanie zadan + odswiezanie dashboardu.
+- `ManagerSidebar.html` - KPI managera + generowanie zadan + odswiezanie podsumowania.
 
 ## 4) Jak uruchomic
 

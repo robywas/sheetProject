@@ -159,16 +159,7 @@ function employeeLookupKey_(name) {
 }
 
 function writeEmailDiagnostic_(mapKeysOrType, szukanoOrError) {
-  try {
-    const sheet = getSheetOrThrow_(SHEET_NAMES.MANAGER_DASHBOARD);
-    const text =
-      mapKeysOrType === 'sendError'
-        ? 'Diagnoza email (blad wysylki): ' + szukanoOrError
-        : 'Diagnoza email: Mapa=[' + mapKeysOrType + '] Szukano=[' + szukanoOrError + ']';
-    sheet.getRange(1, 6).setValue(text);
-  } catch (e) {
-    // ignoruj blad zapisu diagnostyki
-  }
+  // Diagnostyka email – zapis wygasl wraz z usunieciem Dashboard_managera.
 }
 
 function buildReminderEmailBody_(overdue, dueToday, today) {

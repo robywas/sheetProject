@@ -7,10 +7,6 @@ function setupWorkbook() {
   ensureSheetExists_(spreadsheet, SHEET_NAMES.CLIENT_PROCEDURES);
   ensureSheetExists_(spreadsheet, SHEET_NAMES.ASSIGNMENTS);
   ensureSheetExists_(spreadsheet, SHEET_NAMES.TASKS);
-  ensureSheetExists_(spreadsheet, SHEET_NAMES.MANAGER_DASHBOARD);
-  const dashboardSheet = getSheetOrThrow_(SHEET_NAMES.MANAGER_DASHBOARD);
-  ensureSheetSize_(dashboardSheet, DASHBOARD_MIN_ROWS, 7);
-  shrinkSheetToDataBuffer_(dashboardSheet, DASHBOARD_MIN_ROWS, 7);
 
   migrateIdBasedModelToNameModel_();
 
@@ -44,11 +40,6 @@ function setupWorkbook() {
     sortTasksByStatusAndDueDesc_();
   } catch (error) {
     // Sortowanie zadan nie powinno blokowac setupu.
-  }
-  try {
-    refreshManagerDashboard();
-  } catch (error) {
-    // Dashboard moze byc odswiezony pozniej z menu.
   }
   try {
     refreshClientProceduresControl();
@@ -568,7 +559,6 @@ function applyStandardRowLayout_() {
     SHEET_NAMES.CLIENT_PROCEDURES,
     SHEET_NAMES.ASSIGNMENTS,
     SHEET_NAMES.TASKS,
-    SHEET_NAMES.MANAGER_DASHBOARD,
   ];
 
   sheetNames.forEach((name) => {
@@ -731,9 +721,6 @@ function appendRowsIfOnlyHeader_(sheet, rows) {
 }
 
 function getDefaultMinRowsForSheet_(sheetName) {
-  if (sheetName === SHEET_NAMES.MANAGER_DASHBOARD) {
-    return DASHBOARD_MIN_ROWS;
-  }
   return DEFAULT_SHEET_MIN_ROWS;
 }
 

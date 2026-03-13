@@ -7,9 +7,8 @@ function onOpen() {
     .addSeparator()
     .addItem('3) Wygeneruj zadania (30 dni)', 'generateTasks30Days')
     .addItem('4) Odswiez Zadania - X (wszyscy pracownicy)', 'refreshAllMyTasksViews')
-    .addItem('5) Odswiez dashboard managera', 'refreshManagerDashboard')
-    .addItem('6) Odswiez kontrole (Klienci_Procedury)', 'refreshClientProceduresControl')
-    .addItem('7) Wyslij powiadomienia email (termin / opoznienia)', 'sendTaskReminderEmails')
+    .addItem('5) Odswiez kontrole (Klienci_Procedury)', 'refreshClientProceduresControl')
+    .addItem('6) Wyslij powiadomienia email (termin / opoznienia)', 'sendTaskReminderEmails')
     .addSeparator()
     .addItem('Awaryjnie: wyczysc Zadania - X (wszyscy)', 'runEmergencyClearAllMyTasksViews')
     .addSeparator()
@@ -34,7 +33,6 @@ function onInstall() {
 }
 
 function refreshAllViews() {
-  refreshManagerDashboard();
   refreshAllMyTasksViews();
 }
 

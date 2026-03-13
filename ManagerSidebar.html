@@ -67,7 +67,6 @@
 
     <div id="error"></div>
     <button onclick="generateTasks()">Generuj zadania (30 dni)</button>
-    <button class="secondary" onclick="refreshDashboard()">Odswiez dashboard</button>
     <button onclick="loadSummary()">Odswiez podsumowanie</button>
     <div id="status"></div>
 
@@ -98,18 +97,6 @@
           })
           .withFailureHandler(handleError)
           .getManagerSummary();
-      }
-
-      function refreshDashboard() {
-        setStatus('Odswiezam dashboard...');
-        document.getElementById('error').textContent = '';
-        google.script.run
-          .withSuccessHandler(function () {
-            setStatus('Dashboard odswiezony.');
-            loadSummary();
-          })
-          .withFailureHandler(handleError)
-          .refreshManagerDashboard();
       }
 
       function generateTasks() {

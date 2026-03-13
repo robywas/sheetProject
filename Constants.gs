@@ -5,7 +5,6 @@ const SHEET_NAMES = Object.freeze({
   CLIENT_PROCEDURES: 'Klienci_Procedury',
   ASSIGNMENTS: 'Przypisania',
   TASKS: 'Zadania',
-  MANAGER_DASHBOARD: 'Dashboard_managera',
 });
 
 /** Prefiks arkusza zadan per pracownik (np. „Zadania - Jan Kowalski”). */
@@ -15,7 +14,6 @@ const MY_TASKS_SHEET_PREFIX = 'Zadania - ';
 const SHEETS_VISIBLE_ONLY_TO_MANAGER = Object.freeze([
   SHEET_NAMES.TASKS,
   SHEET_NAMES.ASSIGNMENTS,
-  SHEET_NAMES.MANAGER_DASHBOARD,
 ]);
 
 const HEADERS = Object.freeze({
@@ -128,7 +126,6 @@ const DEFAULT_GENERATION_DAYS = 30;
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 const SCHEDULE_LAST_DAY_TOKEN = 'OSTATNI';
 const DEFAULT_SHEET_MIN_ROWS = 11;
-const DASHBOARD_MIN_ROWS = 120;
 
 const LEGACY_SHEET_NAMES = Object.freeze({
   CLIENTS: 'Pacjenci',

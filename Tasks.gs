@@ -2,7 +2,6 @@ function generateTasks30Days() {
   const generationResult = generateRecurringTasks(DEFAULT_GENERATION_DAYS);
   const createdCount = generationResult.createdCount || 0;
   const reassignedCount = generationResult.reassignedCount || 0;
-  refreshManagerDashboard();
   refreshAllMyTasksViews();
 
   SpreadsheetApp.getActiveSpreadsheet().toast(
@@ -971,7 +970,6 @@ function onEdit(e) {
       } catch (error) {
         // Manager bez mapowania pracownika moze przepisywac zadania.
       }
-      refreshManagerDashboard();
       return;
     }
   }
@@ -1022,9 +1020,6 @@ function onEdit(e) {
       } catch (_) {}
     } finally {
       refreshEditedMyTasksSheet_(sheet, editedSheetName);
-      try {
-        refreshManagerDashboard();
-      } catch (_) {}
     }
     return;
   }
@@ -1069,17 +1064,6 @@ function enforceMasterDataIntegerRulesOnEdit_(sheet, range) {
 
   if (sheetName === SHEET_NAMES.ASSIGNMENTS && col === 5) {
     return validateIntegerCell_(range, value, 1, 'W kolumnie kolejnosc wpisz liczbe calkowita >= 1.');
-  }
-
-  if (sheetName === SHEET_NAMES.MANAGER_DASHBOARD && (col === 2 && (range.getRow() === 7 || range.getRow() === 8))) {
-    const minValue = range.getRow() === 7 ? 1 : 0;
-    const label = range.getRow() === 7 ? 'Horyzont terminu' : 'Prog zagrozenia';
-    return validateIntegerCell_(
-      range,
-      value,
-      minValue,
-      label + ' musi byc liczba calkowita >= ' + minValue + '.'
-    );
   }
 
   return false;
