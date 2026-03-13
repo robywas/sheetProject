@@ -185,13 +185,20 @@ function getCurrentUserEmail_() {
   return normalizeText_(activeEmail || effectiveEmail).toLowerCase();
 }
 
-function clearSheetBody_(sheet, maxColumns) {
+/**
+ * Czyści treść (i opcjonalnie format) obszaru danych arkusza (od wiersza 2).
+ * preserveFormat: true = tylko clearContent + usunięcie walidacji (zachowaj czcionki, tło itd.); false = clearFormat też.
+ */
+function clearSheetBody_(sheet, maxColumns, preserveFormat) {
   const lastRow = sheet.getLastRow();
   if (lastRow <= 1) {
     return;
   }
   const range = sheet.getRange(2, 1, lastRow - 1, maxColumns);
-  range.clearContent().clearFormat();
+  range.clearContent();
+  if (!preserveFormat) {
+    range.clearFormat();
+  }
   range.setDataValidation(null);
 }
 

@@ -112,6 +112,7 @@ function writeMyTasksViewToSheet_(sheet, employeeName, options) {
     return;
   }
   const applyFullFormat = options && options.applyFullFormat === true;
+  const preserveFormat = !applyFullFormat;
   const relationNotesByKey = buildClientProcedureNotesByKey_(
     getObjectRows_(SHEET_NAMES.CLIENT_PROCEDURES)
   );
@@ -172,7 +173,7 @@ function writeMyTasksViewToSheet_(sheet, employeeName, options) {
     .sort((left, right) => left.dueDate - right.dueDate);
 
   sheet.getRange(1, 1, 1, HEADERS.MY_TASKS.length).setValues([HEADERS.MY_TASKS]);
-  clearSheetBody_(sheet, HEADERS.MY_TASKS.length);
+  clearSheetBody_(sheet, HEADERS.MY_TASKS.length, preserveFormat);
 
   if (openTasks.length === 0) {
     if (sheet.getSheetName().startsWith(MY_TASKS_SHEET_PREFIX)) {
