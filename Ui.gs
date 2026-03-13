@@ -25,7 +25,7 @@ function onOpen() {
       .setHeight(80);
     SpreadsheetApp.getUi().showModalDialog(html, 'Zadania');
   } catch (e) {
-    // Nie blokuj; uzytkownik moze wybrac z menu „Odswiez moje zadania”.
+    // Nie blokuj; uzytkownik moze wybrac z menu „Odswiez Zadania - X (wszyscy pracownicy)” lub procedury 4.
   }
 }
 

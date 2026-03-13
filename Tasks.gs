@@ -822,7 +822,7 @@ function createNextTaskFromCompleted_(completedTask) {
     .getRange(taskSheet.getLastRow() + 1, 1, 1, HEADERS.TASKS.length)
     .setValues([row]);
   sortTasksByStatusAndDueDesc_();
-  return true;
+  return employeeName || true;
 }
 
 function getNextDueDateForProcedure_(dueDate, procedureConfig) {
@@ -1002,8 +1002,13 @@ function onEdit(e) {
     try {
       if (newStatus === STATUS.DONE) {
         const completedTask = markTaskAsDone_(taskId);
-        createNextTaskFromCompleted_(completedTask);
+        const assignedEmployeeName = createNextTaskFromCompleted_(completedTask);
         refreshEditedMyTasksSheet_(sheet, editedSheetName);
+        if (assignedEmployeeName && typeof assignedEmployeeName === 'string') {
+          try {
+            refreshMyTasksViewForEmployeeName_(assignedEmployeeName);
+          } catch (_) {}
+        }
       } else {
         updateTaskStatus_(taskId, newStatus);
       }
@@ -1036,13 +1041,13 @@ function onEdit(e) {
   }
 }
 
-/** Odswieza widok w edytowanym arkuszu Zadania - X (per pracownik). */
+/** Odswieza widok w edytowanym arkuszu Zadania - X (per pracownik). Bez zmiany formatowania. */
 function refreshEditedMyTasksSheet_(sheet, editedSheetName) {
   if (!editedSheetName.startsWith(MY_TASKS_SHEET_PREFIX)) {
     return;
   }
   const employeeName = editedSheetName.slice(MY_TASKS_SHEET_PREFIX.length);
-  writeMyTasksViewToSheet_(sheet, employeeName);
+  writeMyTasksViewToSheet_(sheet, employeeName, { applyFullFormat: false });
 }
 
 function enforceMasterDataIntegerRulesOnEdit_(sheet, range) {

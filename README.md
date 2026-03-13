@@ -5,7 +5,7 @@ Gotowy szablon Google Apps Script do obslugi regularnych procedur medyczno-opiek
 - ewidencja procedur cyklicznych,
 - powiazanie procedur z klientami,
 - przypisania klientow do pracownikow w okresach czasu,
-- widok pracownika ("Moje_zadania"),
+- widok pracownika (arkusze "Zadania - [Imię Nazwisko]"),
 - widok managera ("Dashboard_managera" + panel boczny).
 
 Model danych dziala na nazwach (`klient`, `pracownik`, `procedura`) bez osobnych kolumn ID.
@@ -20,7 +20,7 @@ Po uruchomieniu `setupWorkbook()` skrypt zaklada:
 4. `Klienci_Procedury`
 5. `Przypisania`
 6. `Zadania`
-7. `Moje_zadania`
+7. `Zadania - [pracownik]` (po jednym arkuszu na aktywnego pracownika)
 8. `Dashboard_managera`
 
 ## 2) Kluczowe funkcje
@@ -63,12 +63,12 @@ Po uruchomieniu `setupWorkbook()` skrypt zaklada:
   - filtry: status, pracownik, horyzont i prog zagrozenia.
 
 - `onEdit(e)`  
-  Gdy pracownik zmieni status w `Moje_zadania`:
+  Gdy pracownik zmieni status w arkuszu „Zadania - X”:
   - status `WYKONANE` zamyka zadanie,
   - automatycznie tworzy sie kolejne zadanie wg trybu i interwalu procedury,
-  - nowe zadanie jest przypisywane do kolejnego pracownika z puli klienta.
-  Dodatkowo, gdy manager zmieni `pracownik` w arkuszu `Zadania`,
-  widok `Moje_zadania` jest odswiezany dla wskazanego pracownika.
+  - nowe zadanie jest przypisywane (naprzemian) do kolejnego pracownika z puli klienta,
+  - odswiezany jest widok pracownika, ktory wykonal zadanie, oraz widok pracownika, ktory dostal nowe.
+  Gdy manager zmieni `pracownik` w arkuszu `Zadania`, widok „Zadania - X” jest odswiezany dla wskazanego pracownika.
 
 ## 3) Interfejsy
 
@@ -77,10 +77,11 @@ Po odswiezeniu arkusza pojawia sie menu `Procedury`:
 1. `Utworz/odswiez strukture`
 2. `Dodaj dane przykladowe`
 3. `Wygeneruj zadania (30 dni)`
-4. `Odswiez moje zadania`
+4. `Odswiez Zadania - X (wszyscy pracownicy)`
 5. `Odswiez dashboard managera`
-6. `Panel pracownika`
-7. `Panel managera`
+6. `Odswiez kontrole (Klienci_Procedury)`
+7. `Wyslij powiadomienia email (termin / opoznienia)`
+8. `Panel pracownika` / `Panel managera`
 
 Panele boczne:
 
@@ -119,7 +120,7 @@ Panele boczne:
    i `kolejnosc` do sterowania rotacja.
    Przy pustej kolumnie `pracownik` skrypt potraktuje to jako rotacje miedzy wszystkimi pracownikami.
 4. Po dodaniu klienta powiaz go recznie z procedurami w `Klienci_Procedury`.
-   W kolumnie `uwagi` mozesz dopisac wskazowki dla wykonawcy (widoczne w `Moje_zadania`).
+   W kolumnie `uwagi` mozesz dopisac wskazowki dla wykonawcy (widoczne w „Zadania - X”).
 5. Dodaj trigger czasowy (np. codziennie 06:00) dla `generateTasks30Days()`.
 6. Ustal workflow statusow (`NOWE`, `W_TRAKCIE`, `WYKONANE`) zgodny z Twoim procesem.
 

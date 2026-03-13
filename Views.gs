@@ -50,16 +50,18 @@ function formatNewMyTasksSheetFromTasks_(myTasksSheet) {
 function getOrCreateMyTasksSheetForEmployee_(employeeName) {
   const name = normalizeText_(employeeName);
   if (!name) {
-    return null;
+    return { sheet: null, created: false };
   }
   const sheetName = MY_TASKS_SHEET_PREFIX + name;
   const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
   let sheet = spreadsheet.getSheetByName(sheetName);
+  let created = false;
   if (!sheet) {
     sheet = spreadsheet.insertSheet(sheetName);
     formatNewMyTasksSheetFromTasks_(sheet);
+    created = true;
   }
-  return sheet;
+  return { sheet, created };
 }
 
 function refreshMyTasksViewForEmployeeName_(employeeName) {
@@ -67,11 +69,14 @@ function refreshMyTasksViewForEmployeeName_(employeeName) {
   if (!selectedEmployeeName) {
     return;
   }
-  const myTasksSheet = getOrCreateMyTasksSheetForEmployee_(selectedEmployeeName);
+  const { sheet: myTasksSheet, created } =
+    getOrCreateMyTasksSheetForEmployee_(selectedEmployeeName);
   if (!myTasksSheet) {
     return;
   }
-  writeMyTasksViewToSheet_(myTasksSheet, selectedEmployeeName);
+  writeMyTasksViewToSheet_(myTasksSheet, selectedEmployeeName, {
+    applyFullFormat: created,
+  });
 }
 
 /**
@@ -98,13 +103,15 @@ function refreshAllMyTasksViews() {
 }
 
 /**
- * Zapisuje widok zadan pracownika do arkusza Zadania - X (naglowek, wiersze, walidacja, formatowanie).
+ * Zapisuje widok zadan pracownika do arkusza Zadania - X (naglowek, wiersze, walidacja, opcjonalnie formatowanie).
+ * applyFullFormat: true tylko przy tworzeniu nowego arkusza – kopiuje format z Zadania; przy odswiezeniu tylko dane.
  */
-function writeMyTasksViewToSheet_(sheet, employeeName) {
+function writeMyTasksViewToSheet_(sheet, employeeName, options) {
   const selectedEmployeeName = normalizeText_(employeeName);
   if (!selectedEmployeeName) {
     return;
   }
+  const applyFullFormat = options && options.applyFullFormat === true;
   const relationNotesByKey = buildClientProcedureNotesByKey_(
     getObjectRows_(SHEET_NAMES.CLIENT_PROCEDURES)
   );
@@ -172,7 +179,9 @@ function writeMyTasksViewToSheet_(sheet, employeeName) {
       SpreadsheetApp.getActiveSpreadsheet().deleteSheet(sheet);
     } else {
       sheet.getRange(2, 1).setValue('Brak otwartych zadan.');
-      applyMyTasksBodyFormatFromTasks_(sheet);
+      if (applyFullFormat) {
+        applyMyTasksBodyFormatFromTasks_(sheet);
+      }
     }
     return;
   }
@@ -197,7 +206,9 @@ function writeMyTasksViewToSheet_(sheet, employeeName) {
   sheet.getRange(2, MY_TASKS_COL.STATUS, rows.length, 1).setDataValidation(statusRule);
   sheet.getRange(2, MY_TASKS_COL.DUE_DATE, rows.length, 1).setNumberFormat('yyyy-mm-dd');
 
-  applyMyTasksBodyFormatFromTasks_(sheet);
+  if (applyFullFormat) {
+    applyMyTasksBodyFormatFromTasks_(sheet);
+  }
 
   const today = normalizeDate_(new Date());
   const todayKey = formatDateKey_(today);
