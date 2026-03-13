@@ -216,6 +216,8 @@ function generateRecurringTasks(daysAhead) {
         }
       }
 
+      const relationUwagi =
+        normalizeText_(relation.uwagi || relation.notatki || relation.notes || '') || '';
       newRows.push([
         Utilities.getUuid(),
         clientName,
@@ -226,7 +228,7 @@ function generateRecurringTasks(daysAhead) {
         new Date(),
         '',
         '',
-        '',
+        relationUwagi,
         taskKey,
         procedure.warningDays || 0,
       ]);
@@ -780,6 +782,15 @@ function createNextTaskFromCompleted_(completedTask) {
     completedTask.employeeName
   );
 
+  const relationNotesByKey = buildClientProcedureNotesByKey_(
+    getObjectRows_(SHEET_NAMES.CLIENT_PROCEDURES)
+  );
+  const relationKey = buildClientProcedureRelationKey_(
+    completedTask.clientName,
+    procedureConfig.procedureName
+  );
+  const uwagi = relationNotesByKey[relationKey] || '';
+
   const row = [
     Utilities.getUuid(),
     completedTask.clientName,
@@ -790,7 +801,7 @@ function createNextTaskFromCompleted_(completedTask) {
     new Date(),
     '',
     '',
-    '',
+    uwagi,
     taskKey,
     procedureConfig.warningDays || 0,
   ];
