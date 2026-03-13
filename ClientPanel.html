@@ -88,7 +88,6 @@
       </div>
     </div>
     <div class="card">
-      <div class="label">Zadania (termin, procedura, pracownik, status)</div>
       <div id="tasksContainer">
         <div class="empty">Brak zadan dla wybranego klienta w tym miesiacu.</div>
       </div>
@@ -134,12 +133,23 @@
 
         var SHEET_NAME_KLIENCI = 'Klienci';
 
+        function closePanel() {
+          google.script.run
+            .withSuccessHandler(function() {
+              try { google.script.host.close(); } catch (e) {}
+            })
+            .withFailureHandler(function() {
+              try { google.script.host.close(); } catch (e) {}
+            })
+            .setClientPanelOpen(false);
+        }
+
         function fetchAndShow() {
           setError('');
           google.script.run
             .withSuccessHandler(function(activeSheetName) {
               if (activeSheetName !== SHEET_NAME_KLIENCI) {
-                try { google.script.host.close(); } catch (e) {}
+                closePanel();
                 return;
               }
               google.script.run
@@ -169,7 +179,7 @@
                 .getSelectedClientFromKlienciSheet();
             })
             .withFailureHandler(function() {
-              try { google.script.host.close(); } catch (e) {}
+              closePanel();
             })
             .getActiveSheetName();
         }
@@ -214,10 +224,14 @@
         document.getElementById('btnNextMonth').onclick = function() { goMonth(1); };
 
         document.getElementById('monthLabel').textContent = monthLabel();
+        google.script.run.setClientPanelOpen(true);
         fetchAndShow();
         startPolling();
 
-        window.addEventListener('unload', stopPolling);
+        window.addEventListener('unload', function() {
+          stopPolling();
+          google.script.run.setClientPanelOpen(false);
+        });
       })();
     </script>
   </body>

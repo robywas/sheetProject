@@ -46,6 +46,11 @@ function setupWorkbook() {
   } catch (error) {
     // Kontrola moze byc odswiezona pozniej z menu.
   }
+  try {
+    ensureClientPanelButtonOnKlienciSheet_();
+  } catch (error) {
+    // Przycisk panelu Klienci moze byc dodany pozniej.
+  }
   SpreadsheetApp.getActiveSpreadsheet().toast(
     'Struktura arkusza jest gotowa (build: ' + DEPLOY_ID + ').',
     'Procedury',

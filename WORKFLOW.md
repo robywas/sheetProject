@@ -70,7 +70,7 @@ Dopiero potem zaczynaj nowe zmiany.
 3. Trzymaj sie jednej galezi (`main`).
 4. `clasp push -f` wykonuj po upewnieniu sie, ze lokalnie masz aktualne `main`.
 5. Nie edytuj kodu bezposrednio w Apps Script, chyba ze awaryjnie.
-6. **Weryfikacja wgrania:** Po `clasp push -f` uruchom w arkuszu **Procedury > 1) Utworz/odswiez strukture** – w komunikacie (toast) zobaczysz **build: <short-commit>** (np. `b020e40`). Porownaj z `git rev-parse --short HEAD` – powinien byc ten sam lub z ostatnich commitow, wtedy wiesz, ze wgrane sa aktualne zmiany. Opcjonalnie przed push: ustaw w `Constants.gs` stalą `DEPLOY_ID` na wynik `git rev-parse --short HEAD`, zcommituj i dopiero potem `clasp push -f`.
+6. **Weryfikacja wgrania:** Przed `clasp push -f` ustaw w `Constants.gs` stalą `DEPLOY_ID` na wynik `git rev-parse --short HEAD` (zcommituj razem z innymi zmianami). Po wgraniu uruchom w arkuszu **Procedury > 1) Utworz/odswiez strukture** – w toastcie zobaczysz **build: <short-commit>**. Ten numer ma byc taki sam jak w podsumowaniu / w git – wtedy potwierdzasz, ze ostatnie zmiany sa wgrane.
 
 ---
 

@@ -15,6 +15,7 @@ function onOpen() {
     .addItem('Panel pracownika', 'openWorkerSidebar')
     .addItem('Panel managera', 'openManagerSidebar')
     .addItem('Panel Klienci', 'openClientPanel')
+    .addItem('Instrukcja: auto-otwieranie panelu Klienci', 'showClientPanelTriggerInstructions')
     .addToUi();
 
   // Przy kazdym otwarciu odswiez Zadania - X dla biezacego uzytkownika. Wywolanie przez dialog,
@@ -53,26 +54,110 @@ function openManagerSidebar() {
 
 function openClientPanel() {
   const html = HtmlService.createHtmlOutputFromFile('ClientPanel')
-    .setTitle('Zadania klienta')
-    .setWidth(760);
-  SpreadsheetApp.getUi().showSidebar(html);
+    .setWidth(760)
+    .setHeight(520);
+  SpreadsheetApp.getUi().showModelessDialog(html, 'Zadania klienta');
+}
+
+/** Klucz wlasciwosci: czy panel Klienci jest otwarty (zapisywane z HTML przy otwarciu/zamknieciu). */
+const CLIENT_PANEL_OPEN_KEY = 'clientPanelOpen';
+
+/** Ustawia/czyści flagę otwartego panelu Klienci (wywolywane z ClientPanel.html). */
+function setClientPanelOpen(isOpen) {
+  const props = PropertiesService.getScriptProperties();
+  if (isOpen) {
+    props.setProperty(CLIENT_PANEL_OPEN_KEY, '1');
+  } else {
+    props.deleteProperty(CLIENT_PANEL_OPEN_KEY);
+  }
 }
 
 /**
- * Wywolywane przez trigger „Przy zmianie zaznaczenia”. Otwiera Panel Klienci,
- * gdy uzytkownik zaznaczy wiersz z danymi na arkuszu Klienci.
- * Trigger: Zdarzenia arkusza > Przy zmianie zaznaczenia > onSelectionChange
+ * Wywolywane przez trigger „Przy zmianie zaznaczenia” (dodaj recznie w Wykonaj > Triggers).
+ * Otwiera Panel Klienci przy zaznaczeniu wiersza z danymi na arkuszu Klienci (tylko jesli panel nie jest juz otwarty).
+ * Jesli trigger sie nie wykonuje, otwieraj panel z menu: Procedury > Panel Klienci –
+ * okno jest modeless, mozesz zmieniac klienta bez zamykania.
  */
 function onSelectionChange(e) {
-  if (!e || !e.range) {
-    return;
+  try {
+    if (!e || !e.range) {
+      return;
+    }
+    const sheet = e.range.getSheet();
+    if (sheet.getName() !== SHEET_NAMES.CLIENTS) {
+      return;
+    }
+    if (e.range.getRow() < 2) {
+      return;
+    }
+    if (PropertiesService.getScriptProperties().getProperty(CLIENT_PANEL_OPEN_KEY) === '1') {
+      return;
+    }
+    const ui = (e.source && e.source.getUi) ? e.source.getUi() : SpreadsheetApp.getUi();
+    const html = HtmlService.createHtmlOutputFromFile('ClientPanel')
+      .setWidth(760)
+      .setHeight(520);
+    ui.showModelessDialog(html, 'Zadania klienta');
+  } catch (err) {
+    // Prosty trigger nie moze otwierac UI – wtedy otworz panel z menu
   }
-  const sheet = e.range.getSheet();
-  if (sheet.getName() !== SHEET_NAMES.CLIENTS) {
-    return;
+}
+
+/**
+ * Pokazuje instrukcje dodania triggera „Przy zmianie zaznaczenia”.
+ * Triggeru nie da sie utworzyc z kodu – trzeba go dodac recznie w edytorze Apps Script.
+ */
+function showClientPanelTriggerInstructions() {
+  const msg =
+    'Auto-otwieranie panelu przy zaznaczeniu klienta wymaga triggera.\n\n' +
+    '1. Otworz edytor Apps Script (Rozszerzenia > Skrypty edytora Apps Script).\n' +
+    '2. Po lewej kliknij ikone Zegara (Wykonaj / Triggers).\n' +
+    '3. Kliknij „Dodaj trigger” (w prawym dolnym rogu).\n' +
+    '4. Funkcja: onSelectionChange\n' +
+    '5. Zdarzenie: Z arkusza > Przy zmianie zaznaczenia\n' +
+    '6. Zapisz.\n\n' +
+    'Po autoryzacji zaznaczenie wiersza na arkuszu Klienci bedzie otwierac panel.';
+  SpreadsheetApp.getUi().alert('Trigger – instrukcja', msg, SpreadsheetApp.getUi().ButtonSet.OK);
+}
+
+/** URL ikony przycisku „Panel Klienci” (PNG, ok. 32px). */
+var CLIENT_PANEL_BUTTON_ICON_URL = 'https://www.google.com/s2/favicons?domain=docs.google.com&sz=32';
+
+/**
+ * Dodaje przycisk „Panel Klienci” w naglowku arkusza Klienci (kolumna B, wiersz 1).
+ * Klik w przycisk uruchamia openClientPanel. Wywolywane z setupWorkbook.
+ */
+function ensureClientPanelButtonOnKlienciSheet_() {
+  const sheet = getSheetOrThrow_(SHEET_NAMES.CLIENTS);
+  const images = sheet.getImages();
+  for (let i = images.length - 1; i >= 0; i--) {
+    const img = images[i];
+    try {
+      if (img.getScript() === 'openClientPanel' && img.getAnchorCell().getRow() === 1) {
+        img.remove();
+      }
+    } catch (e) {
+      // getScript() moze rzucac jesli nie przypisano
+    }
   }
-  if (e.range.getRow() < 2) {
-    return;
+  let blob;
+  try {
+    const resp = UrlFetchApp.fetch(CLIENT_PANEL_BUTTON_ICON_URL, { muteHttpExceptions: true });
+    if (resp.getResponseCode() !== 200) {
+      throw new Error('HTTP ' + resp.getResponseCode());
+    }
+    blob = resp.getBlob();
+  } catch (e) {
+    // Fallback: minimalny 1x1 PNG (przeskalowany wizualnie)
+    blob = Utilities.newBlob(
+      Utilities.base64Decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='),
+      'image/png'
+    );
   }
-  openClientPanel();
+  const over = sheet.insertImage(blob, 2, 1);
+  over.assignScript('openClientPanel');
+  over.setWidth(24);
+  over.setHeight(24);
+  over.setAltTextTitle('Panel Klienci');
+  over.setAltTextDescription('Kliknij, aby otworzyc panel zadan wybranego klienta.');
 }
