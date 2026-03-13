@@ -6,26 +6,24 @@ function onOpen() {
     .addItem('2) Dodaj dane przykladowe', 'seedSampleData')
     .addSeparator()
     .addItem('3) Wygeneruj zadania (30 dni)', 'generateTasks30Days')
-    .addItem('4) Odswiez Moje_zadania (wszyscy pracownicy)', 'refreshAllMyTasksViews')
+    .addItem('4) Odswiez Zadania - X (wszyscy pracownicy)', 'refreshAllMyTasksViews')
     .addItem('5) Odswiez dashboard managera', 'refreshManagerDashboard')
     .addItem('6) Odswiez kontrole (Klienci_Procedury)', 'refreshClientProceduresControl')
     .addItem('7) Wyslij powiadomienia email (termin / opoznienia)', 'sendTaskReminderEmails')
     .addSeparator()
-    .addItem('Awaryjnie: wyczysc Moje_zadania (wszyscy)', 'runEmergencyClearAllMyTasksViews')
+    .addItem('Awaryjnie: wyczysc Zadania - X (wszyscy)', 'runEmergencyClearAllMyTasksViews')
     .addSeparator()
     .addItem('Panel pracownika', 'openWorkerSidebar')
     .addItem('Panel managera', 'openManagerSidebar')
     .addToUi();
 
-  // Przy kazdym otwarciu odswiez Moje_zadania dla biezacego uzytkownika. Wywolanie przez dialog,
+  // Przy kazdym otwarciu odswiez Zadania - X dla biezacego uzytkownika. Wywolanie przez dialog,
   // bo w prostym triggerze onOpen getActiveUser() bywa pusty; dialog laduje w kontekście otwierajacego.
-  // (Bez tego pracownik widzialby zadania poprzedniego uzytkownika. Nie sprawdzamy aktywnej zakladki –
-  // przy otwarciu to czesto pierwszy arkusz, a nie Moje_zadania.)
   try {
     const html = HtmlService.createHtmlOutputFromFile('RefreshMyTasksDialog')
       .setWidth(260)
       .setHeight(80);
-    SpreadsheetApp.getUi().showModalDialog(html, 'Moje zadania');
+    SpreadsheetApp.getUi().showModalDialog(html, 'Zadania');
   } catch (e) {
     // Nie blokuj; uzytkownik moze wybrac z menu „Odswiez moje zadania”.
   }

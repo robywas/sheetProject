@@ -9,7 +9,7 @@ function refreshMyTasksView() {
 }
 
 /**
- * Formatuje nowo utworzony arkusz Moje_zadania na wzor Zadania:
+ * Formatuje nowo utworzony arkusz Zadania - X na wzor Zadania:
  * naglowek i dane – format kolumna po kolumnie (Zadania.due_date→termin, procedura→procedura itd.),
  * wysokosc wierszy, szerokosc kolumn, zamrozenie wiersza 1, ukrycie kolumny A (task_id).
  */
@@ -44,7 +44,7 @@ function formatNewMyTasksSheetFromTasks_(myTasksSheet) {
 }
 
 /**
- * Zwraca arkusz „Moje_zadania - [employeeName]”; tworzy go, jesli nie istnieje.
+ * Zwraca arkusz „Zadania - [employeeName]”; tworzy go, jesli nie istnieje.
  * Przy tworzeniu kopiuje formatowanie z arkusza Zadania i ukrywa kolumne A (task_id).
  */
 function getOrCreateMyTasksSheetForEmployee_(employeeName) {
@@ -75,8 +75,8 @@ function refreshMyTasksViewForEmployeeName_(employeeName) {
 }
 
 /**
- * Odswieza arkusze Moje_zadania dla pracownikow aktywnych (checkbox „aktywny” w Pracownicy).
- * Tylko oni maja zadania przydzielane i tylko dla nich tworzone/odswiezane sa arkusze Moje_zadania - X.
+ * Odswieza arkusze Zadania - X dla pracownikow aktywnych (checkbox „aktywny” w Pracownicy).
+ * Tylko oni maja zadania przydzielane i tylko dla nich tworzone/odswiezane sa arkusze Zadania - X.
  * Wywolywane z menu (procedura 4) oraz po wygenerowaniu zadan.
  */
 function refreshAllMyTasksViews() {
@@ -98,7 +98,7 @@ function refreshAllMyTasksViews() {
 }
 
 /**
- * Zapisuje widok „Moje zadania” dla danego pracownika do podanego arkusza (naglowek, wiersze, walidacja, formatowanie).
+ * Zapisuje widok zadan pracownika do arkusza Zadania - X (naglowek, wiersze, walidacja, formatowanie).
  */
 function writeMyTasksViewToSheet_(sheet, employeeName) {
   const selectedEmployeeName = normalizeText_(employeeName);
@@ -188,7 +188,7 @@ function writeMyTasksViewToSheet_(sheet, employeeName) {
 }
 
 /**
- * Kopiuje formatowanie wierszy danych z Zadania do Moje_zadania kolumna po kolumnie
+ * Kopiuje formatowanie wierszy danych z Zadania do arkusza Zadania - X kolumna po kolumnie
  * (Zadania.due_date→termin, procedura→procedura itd.) oraz szerokosc kolumn i wysokosc wierszy.
  */
 function applyMyTasksBodyFormatFromTasks_(myTasksSheet) {
@@ -223,7 +223,7 @@ function applyMyTasksBodyFormatFromTasks_(myTasksSheet) {
 }
 
 /**
- * Ustawia arkusz widoku „Moje zadania” w stan pusty: naglowek + „Brak otwartych zadan.”
+ * Ustawia arkusz Zadania - X w stan pusty: naglowek + „Brak otwartych zadan.”
  * Uzywane przez procedure awaryjna czyszczenia widokow.
  */
 function clearMyTasksViewToEmpty_(sheet) {
@@ -239,8 +239,8 @@ function clearMyTasksViewToEmpty_(sheet) {
 }
 
 /**
- * Procedura awaryjna: wymusza usuniecie zadan z Moje_zadania dla wszystkich uzytkownikow.
- * Czyści glówny arkusz „Moje_zadania” oraz wszystkie arkusze „Moje_zadania - [Imię Nazwisko]”.
+ * Procedura awaryjna: wymusza usuniecie zadan z widokow Zadania - X dla wszystkich uzytkownikow.
+ * Czyści wszystkie arkusze „Zadania - [Imię Nazwisko]”.
  * Jesli w trakcie operacji powstaly dodatkowe arkusze (np. tymczasowe), zostana usuniete po zakonczeniu.
  */
 function emergencyClearAllMyTasksViews_() {
@@ -267,11 +267,11 @@ function emergencyClearAllMyTasksViews_() {
 }
 
 /**
- * Procedura awaryjna (menu): wymusza wyczyszczenie Moje_zadania u wszystkich uzytkownikow.
+ * Procedura awaryjna (menu): wymusza wyczyszczenie widokow Zadania - X u wszystkich uzytkownikow.
  */
 function runEmergencyClearAllMyTasksViews() {
   emergencyClearAllMyTasksViews_();
-  SpreadsheetApp.getUi().alert('Wyczyszczono widoki Moje_zadania (glówny arkusz i wszystkie Moje_zadania - X).');
+  SpreadsheetApp.getUi().alert('Wyczyszczono widoki Zadania - X u wszystkich pracownikow.');
 }
 
 function refreshClientProceduresControl() {

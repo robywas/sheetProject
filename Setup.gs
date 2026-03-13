@@ -196,7 +196,7 @@ function applyDataHints_() {
   );
   clientProceduresSheet
     .getRange('D1')
-    .setNote('Uwagi do konkretnego powiazania klient-procedura. Pokazywane w Moje_zadania.');
+    .setNote('Uwagi do konkretnego powiazania klient-procedura. Pokazywane w Zadania - X.');
   clientProceduresSheet
     .getRange('E1')
     .setNote('Kontrola: OK / Nieprzypisane / Brak zadan. Odswiez z menu Procedury.');

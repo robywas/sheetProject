@@ -951,7 +951,7 @@ function onEdit(e) {
     if (!isCurrentUserManager_()) {
       e.range.setValue(e.oldValue !== undefined ? e.oldValue : '');
       SpreadsheetApp.getActiveSpreadsheet().toast(
-        'Tylko manager moze edytowac arkusz Zadania. Uzyj Moje_zadania do zmiany statusu.',
+        'Tylko manager moze edytowac arkusz Zadania. Uzyj zakladki Zadania - X do zmiany statusu.',
         'Uprawnienia',
         5
       );
@@ -1022,7 +1022,7 @@ function onEdit(e) {
   }
 }
 
-/** Odswieza widok w edytowanym arkuszu Moje_zadania - X (per pracownik). */
+/** Odswieza widok w edytowanym arkuszu Zadania - X (per pracownik). */
 function refreshEditedMyTasksSheet_(sheet, editedSheetName) {
   if (!editedSheetName.startsWith(MY_TASKS_SHEET_PREFIX)) {
     return;

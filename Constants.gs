@@ -8,8 +8,8 @@ const SHEET_NAMES = Object.freeze({
   MANAGER_DASHBOARD: 'Dashboard_managera',
 });
 
-/** Prefiks arkusza „Moje zadania” per pracownik (np. „Moje_zadania - Jan Kowalski”). */
-const MY_TASKS_SHEET_PREFIX = 'Moje_zadania - ';
+/** Prefiks arkusza zadan per pracownik (np. „Zadania - Jan Kowalski”). */
+const MY_TASKS_SHEET_PREFIX = 'Zadania - ';
 
 /** Arkusze widoczne tylko dla managera; przy otwarciu przez pracownika są ukrywane (por. applySheetVisibilityByRole_). */
 const SHEETS_VISIBLE_ONLY_TO_MANAGER = Object.freeze([
@@ -100,7 +100,7 @@ const MY_TASKS_COL = Object.freeze({
 });
 
 /**
- * Dla kopiowania formatowania: indeks kolumny w Zadania (1-based) odpowiadajacy kolumnie w Moje_zadania.
+ * Dla kopiowania formatowania: indeks kolumny w Zadania (1-based) odpowiadajacy kolumnie w Zadania - X.
  * Kolejnosc: task_id, termin(due_date), klient, procedura, status, uwagi, notatka(notes).
  */
 const TASKS_COL_FOR_MY_TASKS_FORMAT = Object.freeze([1, 5, 2, 3, 6, 10, 9]);
