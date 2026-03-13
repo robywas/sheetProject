@@ -999,15 +999,27 @@ function onEdit(e) {
       return;
     }
 
-    if (newStatus === STATUS.DONE) {
-      const completedTask = markTaskAsDone_(taskId);
-      createNextTaskFromCompleted_(completedTask);
-    } else {
-      updateTaskStatus_(taskId, newStatus);
+    try {
+      if (newStatus === STATUS.DONE) {
+        const completedTask = markTaskAsDone_(taskId);
+        createNextTaskFromCompleted_(completedTask);
+      } else {
+        updateTaskStatus_(taskId, newStatus);
+      }
+    } catch (err) {
+      try {
+        SpreadsheetApp.getActiveSpreadsheet().toast(
+          'Błąd przy zapisie: ' + (err.message || String(err)),
+          'Zadania - X',
+          8
+        );
+      } catch (_) {}
+    } finally {
+      refreshEditedMyTasksSheet_(sheet, editedSheetName);
+      try {
+        refreshManagerDashboard();
+      } catch (_) {}
     }
-
-    refreshEditedMyTasksSheet_(sheet, editedSheetName);
-    refreshManagerDashboard();
     return;
   }
 
