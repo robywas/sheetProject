@@ -525,3 +525,70 @@ function applySheetVisibilityByRole_() {
     }
   });
 }
+
+/**
+ * Dla panelu Klienci: zwraca nazwe klienta z aktualnie zaznaczonego wiersza na arkuszu Klienci.
+ * Gdy aktywny arkusz to nie Klienci lub zaznaczony wiersz to naglowek – zwraca null.
+ */
+function getSelectedClientFromKlienciSheet() {
+  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = spreadsheet.getActiveSheet();
+  if (!sheet || sheet.getName() !== SHEET_NAMES.CLIENTS) {
+    return null;
+  }
+  const range = spreadsheet.getActiveRange();
+  if (!range) {
+    return null;
+  }
+  const row = range.getRow();
+  if (row < 2) {
+    return null;
+  }
+  const clientName = normalizeText_(sheet.getRange(row, 1).getValue());
+  if (!clientName) {
+    return null;
+  }
+  return { clientName };
+}
+
+/**
+ * Zwraca zadania dla danego klienta w podanym miesiacu (termin, procedura, pracownik, status), posortowane wg terminu.
+ * year, month – liczby (month 1–12).
+ */
+function getTasksForClientInMonth(clientName, year, month) {
+  if (!clientName || !year || !month) {
+    return [];
+  }
+  const clientKey = normalizeLookupKey_(clientName);
+  const firstDay = new Date(year, month - 1, 1);
+  const lastDay = new Date(year, month, 0);
+  lastDay.setHours(23, 59, 59, 999);
+  const firstTs = firstDay.getTime();
+  const lastTs = lastDay.getTime();
+
+  const taskRows = getObjectRows_(SHEET_NAMES.TASKS);
+  const tz = Session.getScriptTimeZone();
+  const fmt = (d) => (d ? Utilities.formatDate(toDate_(d), tz, 'yyyy-MM-dd') : '');
+
+  const tasks = taskRows
+    .filter(
+      (row) =>
+        normalizeLookupKey_(row.klient || row.client_id) === clientKey
+    )
+    .map((row) => ({
+      dueDate: toDate_(row.due_date),
+      procedure: normalizeText_(row.procedura || row.procedure_id) || '',
+      employee: normalizeText_(row.pracownik || row.employee_id) || '',
+      status: normalizeText_(row.status) || '',
+    }))
+    .filter((row) => row.dueDate && row.dueDate.getTime() >= firstTs && row.dueDate.getTime() <= lastTs)
+    .sort((a, b) => a.dueDate.getTime() - b.dueDate.getTime())
+    .map((row) => ({
+      dueDate: fmt(row.dueDate),
+      procedure: row.procedure,
+      employee: row.employee,
+      status: row.status,
+    }));
+
+  return tasks;
+}

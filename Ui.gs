@@ -14,6 +14,7 @@ function onOpen() {
     .addSeparator()
     .addItem('Panel pracownika', 'openWorkerSidebar')
     .addItem('Panel managera', 'openManagerSidebar')
+    .addItem('Panel Klienci', 'openClientPanel')
     .addToUi();
 
   // Przy kazdym otwarciu odswiez Zadania - X dla biezacego uzytkownika. Wywolanie przez dialog,
@@ -47,5 +48,12 @@ function openManagerSidebar() {
   const html = HtmlService.createHtmlOutputFromFile('ManagerSidebar')
     .setTitle('Panel managera')
     .setWidth(340);
+  SpreadsheetApp.getUi().showSidebar(html);
+}
+
+function openClientPanel() {
+  const html = HtmlService.createHtmlOutputFromFile('ClientPanel')
+    .setTitle('Zadania klienta')
+    .setWidth(380);
   SpreadsheetApp.getUi().showSidebar(html);
 }

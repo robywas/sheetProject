@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top" />
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 12px;
+        color: #202124;
+        font-size: 13px;
+      }
+      .card {
+        border: 1px solid #dadce0;
+        border-radius: 8px;
+        padding: 10px 12px;
+        margin-bottom: 10px;
+      }
+      .card .label {
+        font-size: 11px;
+        color: #5f6368;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+      .card .value {
+        font-size: 14px;
+        font-weight: 600;
+        margin-top: 2px;
+      }
+      .month-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 8px;
+      }
+      button {
+        border: 0;
+        border-radius: 6px;
+        background: #1a73e8;
+        color: #fff;
+        padding: 6px 12px;
+        cursor: pointer;
+        font-size: 12px;
+      }
+      button.secondary {
+        background: #5f6368;
+      }
+      button:disabled {
+        opacity: 0.6;
+        cursor: default;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 12px;
+        margin-top: 8px;
+      }
+      th, td {
+        text-align: left;
+        padding: 6px 8px;
+        border-bottom: 1px solid #e8eaed;
+      }
+      th {
+        background: #f1f3f4;
+        font-weight: 600;
+        color: #5f6368;
+      }
+      tr:hover td {
+        background: #f8f9fa;
+      }
+      #clientName { color: #1a73e8; }
+      #status { margin-top: 8px; font-size: 11px; color: #5f6368; }
+      #error { color: #b31412; font-size: 12px; margin-top: 4px; }
+      .empty { color: #5f6368; font-style: italic; padding: 12px; }
+    </style>
+  </head>
+  <body>
+    <h3 style="margin-top:0;">Zadania klienta</h3>
+    <div class="card">
+      <div class="label">Wybrany klient</div>
+      <div id="clientName" class="value">Zaznacz wiersz na arkuszu Klienci</div>
+    </div>
+    <div class="card">
+      <div class="label">Miesiac</div>
+      <div class="month-row">
+        <button type="button" id="btnPrevMonth" class="secondary">Poprzedni</button>
+        <span id="monthLabel">–</span>
+        <button type="button" id="btnNextMonth" class="secondary">Nastepny</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="label">Zadania (termin, procedura, pracownik, status)</div>
+      <div id="tasksContainer">
+        <div class="empty">Brak zadan dla wybranego klienta w tym miesiacu.</div>
+      </div>
+    </div>
+    <div id="status"></div>
+    <div id="error"></div>
+
+    <script>
+      (function() {
+        var currentYear = new Date().getFullYear();
+        var currentMonth = new Date().getMonth() + 1;
+        var lastClientName = null;
+        var pollIntervalMs = 2000;
+        var pollTimer = null;
+
+        function monthLabel() {
+          var names = ['', 'Styczen', 'Luty', 'Marzec', 'Kwiecien', 'Maj', 'Czerwiec',
+            'Lipiec', 'Sierpien', 'Wrzesien', 'Pazdziernik', 'Listopad', 'Grudzien'];
+          return names[currentMonth] + ' ' + currentYear;
+        }
+
+        function renderTasks(tasks) {
+          var container = document.getElementById('tasksContainer');
+          if (!tasks || tasks.length === 0) {
+            container.innerHTML = '<div class="empty">Brak zadan dla wybranego klienta w tym miesiacu.</div>';
+            return;
+          }
+          var html = '<table><thead><tr><th>Termin</th><th>Procedura</th><th>Pracownik</th><th>Status</th></tr></thead><tbody>';
+          tasks.forEach(function(t) {
+            html += '<tr><td>' + (t.dueDate || '') + '</td><td>' + (t.procedure || '') + '</td><td>' + (t.employee || '') + '</td><td>' + (t.status || '') + '</td></tr>';
+          });
+          html += '</tbody></table>';
+          container.innerHTML = html;
+        }
+
+        function setStatus(text) {
+          document.getElementById('status').textContent = text || '';
+        }
+
+        function setError(msg) {
+          document.getElementById('error').textContent = msg || '';
+        }
+
+        function fetchAndShow() {
+          setError('');
+          google.script.run
+            .withSuccessHandler(function(result) {
+              if (!result || !result.clientName) {
+                document.getElementById('clientName').textContent = 'Zaznacz wiersz na arkuszu Klienci';
+                lastClientName = null;
+                renderTasks([]);
+                return;
+              }
+              document.getElementById('clientName').textContent = result.clientName;
+              lastClientName = result.clientName;
+              google.script.run
+                .withSuccessHandler(function(tasks) {
+                  renderTasks(tasks || []);
+                  setStatus('');
+                })
+                .withFailureHandler(function(err) {
+                  setError(err && err.message ? err.message : String(err));
+                  renderTasks([]);
+                })
+                .getTasksForClientInMonth(result.clientName, currentYear, currentMonth);
+            })
+            .withFailureHandler(function(err) {
+              setError(err && err.message ? err.message : String(err));
+            })
+            .getSelectedClientFromKlienciSheet();
+        }
+
+        function startPolling() {
+          if (pollTimer) return;
+          pollTimer = setInterval(fetchAndShow, pollIntervalMs);
+        }
+
+        function stopPolling() {
+          if (pollTimer) {
+            clearInterval(pollTimer);
+            pollTimer = null;
+          }
+        }
+
+        function goMonth(delta) {
+          currentMonth += delta;
+          if (currentMonth > 12) {
+            currentMonth = 1;
+            currentYear++;
+          } else if (currentMonth < 1) {
+            currentMonth = 12;
+            currentYear--;
+          }
+          document.getElementById('monthLabel').textContent = monthLabel();
+          if (lastClientName) {
+            setStatus('Odswiezam…');
+            google.script.run
+              .withSuccessHandler(function(tasks) {
+                renderTasks(tasks || []);
+                setStatus('');
+              })
+              .withFailureHandler(function(err) {
+                setError(err && err.message ? err.message : String(err));
+              })
+              .getTasksForClientInMonth(lastClientName, currentYear, currentMonth);
+          }
+        }
+
+        document.getElementById('btnPrevMonth').onclick = function() { goMonth(-1); };
+        document.getElementById('btnNextMonth').onclick = function() { goMonth(1); };
+
+        document.getElementById('monthLabel').textContent = monthLabel();
+        fetchAndShow();
+        startPolling();
+
+        window.addEventListener('unload', stopPolling);
+      })();
+    </script>
+  </body>
+</html>
