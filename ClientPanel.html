@@ -63,8 +63,8 @@
         text-overflow: ellipsis;
       }
       th:nth-child(1), td:nth-child(1) { width: 22%; }
-      th:nth-child(2), td:nth-child(2) { width: 32%; }
-      th:nth-child(3), td:nth-child(3) { width: 26%; }
+      th:nth-child(2), td:nth-child(2) { width: 36%; }
+      th:nth-child(3), td:nth-child(3) { width: 22%; }
       th:nth-child(4), td:nth-child(4) { width: 20%; }
       th {
         background: #f1f3f4;
@@ -171,7 +171,7 @@
               google.script.run
                 .withSuccessHandler(function(result) {
                   if (!result || !result.clientName) {
-                    document.getElementById('clientName').textContent = 'Zaznacz wiersz na arkuszu Klienci lub Zadania';
+                    document.getElementById('clientName').textContent = 'Zaznacz komórkę z nazwą klienta';
                     lastClientName = null;
                     renderTasks([]);
                     return;

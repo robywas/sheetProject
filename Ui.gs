@@ -54,7 +54,7 @@ function openManagerSidebar() {
 
 function openClientPanel() {
   const html = HtmlService.createHtmlOutputFromFile('ClientPanel')
-    .setWidth(600)
+    .setWidth(500)
     .setHeight(520);
   SpreadsheetApp.getUi().showModelessDialog(html, 'Zadania klienta');
 }
@@ -95,7 +95,7 @@ function onSelectionChange(e) {
     }
     const ui = (e.source && e.source.getUi) ? e.source.getUi() : SpreadsheetApp.getUi();
     const html = HtmlService.createHtmlOutputFromFile('ClientPanel')
-      .setWidth(600)
+      .setWidth(500)
       .setHeight(520);
     ui.showModelessDialog(html, 'Zadania klienta');
   } catch (err) {
