@@ -97,7 +97,6 @@
       <div class="label">Wybrany klient</div>
       <div class="month-row" style="align-items: center;">
         <span id="clientName" class="value" style="flex:1;">Zaznacz wiersz na arkuszu Klienci</span>
-        <button type="button" id="btnRefresh" class="secondary">Odswiez</button>
       </div>
     </div>
     <div class="card">
@@ -243,10 +242,6 @@
 
         document.getElementById('btnPrevMonth').onclick = function() { goMonth(-1); };
         document.getElementById('btnNextMonth').onclick = function() { goMonth(1); };
-        document.getElementById('btnRefresh').onclick = function() {
-          setStatus('Odswiezam…');
-          fetchAndShow();
-        };
 
         document.getElementById('monthLabel').textContent = monthLabel();
         google.script.run.setClientPanelOpen(true);
