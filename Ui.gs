@@ -54,7 +54,7 @@ function openManagerSidebar() {
 
 function openClientPanel() {
   const html = HtmlService.createHtmlOutputFromFile('ClientPanel')
-    .setWidth(760)
+    .setWidth(600)
     .setHeight(520);
   SpreadsheetApp.getUi().showModelessDialog(html, 'Zadania klienta');
 }
@@ -95,7 +95,7 @@ function onSelectionChange(e) {
     }
     const ui = (e.source && e.source.getUi) ? e.source.getUi() : SpreadsheetApp.getUi();
     const html = HtmlService.createHtmlOutputFromFile('ClientPanel')
-      .setWidth(760)
+      .setWidth(600)
       .setHeight(520);
     ui.showModelessDialog(html, 'Zadania klienta');
   } catch (err) {
@@ -120,44 +120,50 @@ function showClientPanelTriggerInstructions() {
   SpreadsheetApp.getUi().alert('Trigger – instrukcja', msg, SpreadsheetApp.getUi().ButtonSet.OK);
 }
 
-/** URL ikony przycisku „Panel Klienci” (PNG, ok. 32px). */
-var CLIENT_PANEL_BUTTON_ICON_URL = 'https://www.google.com/s2/favicons?domain=docs.google.com&sz=32';
+/**
+ * Ikona przycisku „Panel Klienci” – tylko base64, bez pobierania w skrypcie (brak blokady antywirusa).
+ * Aby uzyc wlasnej ikony: pobierz PNG 24x24 (np. list/view) z:
+ *   https://icons8.com/icons/set/list  (wybierz ikone → PNG 24px → Pobierz)
+ *   lub https://fonts.google.com/icons (Material Icons → wybierz → Download PNG)
+ * Potem przekonwertuj plik na base64 (np. https://www.base64-image.de) i wklej ponizej.
+ */
+var CLIENT_PANEL_BUTTON_ICON_BASE64 = 'iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAX0lEQVR4nO3VsQnAMBAEwW/lmlajX4CdGicGgUDCM6BI0QbHVwFsKaOv5/v6X/1KwIuAsTgA/i6njzgCWkDcAZh3/IgjoAXEHYB5x484AlpA3AGYd/yII6AFxB0Aanc3L0Cm26Ko+hkAAAAASUVORK5CYII=';
 
 /**
- * Dodaje przycisk „Panel Klienci” w naglowku arkusza Klienci (kolumna B, wiersz 1).
- * Klik w przycisk uruchamia openClientPanel. Wywolywane z setupWorkbook.
+ * Dodaje przycisk „Panel Klienci” w naglowku arkusza Klienci (komorka B1).
+ * Zapewnia 2 kolumny, wstawia ikone w B1. Klik uruchamia openClientPanel. Wywolywane z setupWorkbook.
  */
 function ensureClientPanelButtonOnKlienciSheet_() {
-  const sheet = getSheetOrThrow_(SHEET_NAMES.CLIENTS);
-  const images = sheet.getImages();
-  for (let i = images.length - 1; i >= 0; i--) {
-    const img = images[i];
-    try {
-      if (img.getScript() === 'openClientPanel' && img.getAnchorCell().getRow() === 1) {
-        img.remove();
-      }
-    } catch (e) {
-      // getScript() moze rzucac jesli nie przypisano
-    }
-  }
-  let blob;
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
   try {
-    const resp = UrlFetchApp.fetch(CLIENT_PANEL_BUTTON_ICON_URL, { muteHttpExceptions: true });
-    if (resp.getResponseCode() !== 200) {
-      throw new Error('HTTP ' + resp.getResponseCode());
+    const sheet = getSheetOrThrow_(SHEET_NAMES.CLIENTS);
+    const images = sheet.getImages();
+    for (let i = images.length - 1; i >= 0; i--) {
+      const img = images[i];
+      try {
+        if (img.getScript() === 'openClientPanel' && img.getAnchorCell().getRow() === 1) {
+          img.remove();
+        }
+      } catch (e) {
+        // getScript() moze rzucac jesli nie przypisano
+      }
     }
-    blob = resp.getBlob();
-  } catch (e) {
-    // Fallback: minimalny 1x1 PNG (przeskalowany wizualnie)
-    blob = Utilities.newBlob(
-      Utilities.base64Decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='),
+    ensureSheetSize_(sheet, sheet.getMaxRows(), 2);
+    const col = 2;
+    const row = 1;
+    const blob = Utilities.newBlob(
+      Utilities.base64Decode(CLIENT_PANEL_BUTTON_ICON_BASE64),
       'image/png'
     );
+    const over = sheet.insertImage(blob, col, row);
+    over.assignScript('openClientPanel');
+    over.setWidth(24);
+    over.setHeight(24);
+    over.setAltTextTitle('Panel Klienci');
+    over.setAltTextDescription('Kliknij, aby otworzyc panel zadan wybranego klienta.');
+    ss.toast('Ikona Panel Klienci dodana w B1.', 'Przycisk', 4);
+  } catch (err) {
+    const msg = (err && err.message) ? err.message : String(err);
+    ss.toast('Blad przycisku: ' + msg, 'Panel Klienci', 8);
   }
-  const over = sheet.insertImage(blob, 2, 1);
-  over.assignScript('openClientPanel');
-  over.setWidth(24);
-  over.setHeight(24);
-  over.setAltTextTitle('Panel Klienci');
-  over.setAltTextDescription('Kliknij, aby otworzyc panel zadan wybranego klienta.');
 }

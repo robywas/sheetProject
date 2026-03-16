@@ -53,12 +53,19 @@
         border-collapse: collapse;
         font-size: 12px;
         margin-top: 8px;
+        table-layout: fixed;
       }
       th, td {
         text-align: left;
         padding: 6px 8px;
         border-bottom: 1px solid #e8eaed;
+        overflow: hidden;
+        text-overflow: ellipsis;
       }
+      th:nth-child(1), td:nth-child(1) { width: 22%; }
+      th:nth-child(2), td:nth-child(2) { width: 32%; }
+      th:nth-child(3), td:nth-child(3) { width: 26%; }
+      th:nth-child(4), td:nth-child(4) { width: 20%; }
       th {
         background: #f1f3f4;
         font-weight: 600;
@@ -71,13 +78,22 @@
       #status { margin-top: 8px; font-size: 11px; color: #5f6368; }
       #error { color: #b31412; font-size: 12px; margin-top: 4px; }
       .empty { color: #5f6368; font-style: italic; padding: 12px; }
+      .tasks-card {
+        max-height: 280px;
+        overflow-y: auto;
+      }
+      .tasks-card table {
+        margin-top: 0;
+      }
     </style>
   </head>
   <body>
-    <h3 style="margin-top:0;">Zadania klienta</h3>
     <div class="card">
       <div class="label">Wybrany klient</div>
-      <div id="clientName" class="value">Zaznacz wiersz na arkuszu Klienci</div>
+      <div class="month-row" style="align-items: center;">
+        <span id="clientName" class="value" style="flex:1;">Zaznacz wiersz na arkuszu Klienci</span>
+        <button type="button" id="btnRefresh" class="secondary">Odswiez</button>
+      </div>
     </div>
     <div class="card">
       <div class="label">Miesiac</div>
@@ -87,7 +103,7 @@
         <button type="button" id="btnNextMonth" class="secondary">Nastepny</button>
       </div>
     </div>
-    <div class="card">
+    <div class="card tasks-card">
       <div id="tasksContainer">
         <div class="empty">Brak zadan dla wybranego klienta w tym miesiacu.</div>
       </div>
@@ -131,7 +147,7 @@
           document.getElementById('error').textContent = msg || '';
         }
 
-        var SHEET_NAME_KLIENCI = 'Klienci';
+        var SHEETS_KEEP_PANEL_OPEN = ['Klienci', 'Zadania'];
 
         function closePanel() {
           google.script.run
@@ -148,14 +164,14 @@
           setError('');
           google.script.run
             .withSuccessHandler(function(activeSheetName) {
-              if (activeSheetName !== SHEET_NAME_KLIENCI) {
+              if (SHEETS_KEEP_PANEL_OPEN.indexOf(activeSheetName) === -1) {
                 closePanel();
                 return;
               }
               google.script.run
                 .withSuccessHandler(function(result) {
                   if (!result || !result.clientName) {
-                    document.getElementById('clientName').textContent = 'Zaznacz wiersz na arkuszu Klienci';
+                    document.getElementById('clientName').textContent = 'Zaznacz wiersz na arkuszu Klienci lub Zadania';
                     lastClientName = null;
                     renderTasks([]);
                     return;
@@ -176,7 +192,7 @@
                 .withFailureHandler(function(err) {
                   setError(err && err.message ? err.message : String(err));
                 })
-                .getSelectedClientFromKlienciSheet();
+                .getSelectedClientForPanel();
             })
             .withFailureHandler(function() {
               closePanel();
@@ -222,6 +238,10 @@
 
         document.getElementById('btnPrevMonth').onclick = function() { goMonth(-1); };
         document.getElementById('btnNextMonth').onclick = function() { goMonth(1); };
+        document.getElementById('btnRefresh').onclick = function() {
+          setStatus('Odswiezam…');
+          fetchAndShow();
+        };
 
         document.getElementById('monthLabel').textContent = monthLabel();
         google.script.run.setClientPanelOpen(true);

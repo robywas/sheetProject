@@ -120,12 +120,12 @@ const MY_TASKS_COL = Object.freeze({
 const TASKS_COL_FOR_MY_TASKS_FORMAT = Object.freeze([1, 6, 2, 3, 5, 8, 9]);
 
 /** Id wersji (short commit) – przed każdym clasp push ustaw na: git rev-parse --short HEAD. Toast potwierdza, że wgrane zmiany są z tego commitu. */
-const DEPLOY_ID = '918d900';
+const DEPLOY_ID = '49169a6';
 
 const DEFAULT_GENERATION_DAYS = 30;
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 const SCHEDULE_LAST_DAY_TOKEN = 'OSTATNI';
-const DEFAULT_SHEET_MIN_ROWS = 11;
+const DEFAULT_SHEET_MIN_ROWS = 5;
 
 const LEGACY_SHEET_NAMES = Object.freeze({
   CLIENTS: 'Pacjenci',

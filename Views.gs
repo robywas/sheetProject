@@ -559,6 +559,39 @@ function getSelectedClientFromKlienciSheet() {
   return { clientName };
 }
 
+/** Indeks kolumny „klient” w arkuszu Zadania (1-based). */
+var TASKS_COL_KLIENT = 2;
+
+/**
+ * Zwraca nazwe klienta dla panelu: z arkusza Klienci (kol. A) lub Zadania (kol. klient).
+ * Gdy aktywny arkusz to inny lub wiersz to naglowek – zwraca null.
+ */
+function getSelectedClientForPanel() {
+  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = spreadsheet.getActiveSheet();
+  if (!sheet) {
+    return null;
+  }
+  const range = spreadsheet.getActiveRange();
+  if (!range) {
+    return null;
+  }
+  const row = range.getRow();
+  if (row < 2) {
+    return null;
+  }
+  const name = sheet.getName();
+  if (name === SHEET_NAMES.CLIENTS) {
+    const clientName = normalizeText_(sheet.getRange(row, 1).getValue());
+    return clientName ? { clientName } : null;
+  }
+  if (name === SHEET_NAMES.TASKS) {
+    const clientName = normalizeText_(sheet.getRange(row, TASKS_COL_KLIENT).getValue());
+    return clientName ? { clientName } : null;
+  }
+  return null;
+}
+
 /**
  * Zwraca zadania dla danego klienta w podanym miesiacu (termin, procedura, pracownik, status), posortowane wg terminu.
  * year, month – liczby (month 1–12).

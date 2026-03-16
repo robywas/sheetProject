@@ -46,11 +46,6 @@ function setupWorkbook() {
   } catch (error) {
     // Kontrola moze byc odswiezona pozniej z menu.
   }
-  try {
-    ensureClientPanelButtonOnKlienciSheet_();
-  } catch (error) {
-    // Przycisk panelu Klienci moze byc dodany pozniej.
-  }
   SpreadsheetApp.getActiveSpreadsheet().toast(
     'Struktura arkusza jest gotowa (build: ' + DEPLOY_ID + ').',
     'Procedury',
@@ -164,6 +159,10 @@ function applyFormatting_() {
   taskSheet.getRange('G:G').setNumberFormat('yyyy-mm-dd hh:mm');
   taskSheet.getRange('K:K').setNumberFormat('yyyy-mm-dd hh:mm');
   taskSheet.hideColumns(1);
+  taskSheet.setColumnWidth(2, 200); // kolumna klient (Zadania)
+
+  const clientsSheet = getSheetOrThrow_(SHEET_NAMES.CLIENTS);
+  clientsSheet.setColumnWidth(1, 200); // kolumna klient (Klienci)
 
   const clientProceduresSheet = getSheetOrThrow_(SHEET_NAMES.CLIENT_PROCEDURES);
   clientProceduresSheet.getRange('C:C').setNumberFormat('yyyy-mm-dd');
