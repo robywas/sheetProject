@@ -67,6 +67,30 @@ function sendTaskReminderEmails() {
     }
   }
   SpreadsheetApp.getActiveSpreadsheet().toast(msg, 'Powiadomienia', 10);
+
+  // Dodatkowo: w tym samym triggerze wykonaj kontrole Klienci_Procedury.
+  // W razie bledu – wyslij email do managera.
+  try {
+    refreshClientProceduresControl();
+  } catch (err) {
+    const managers = getManagerEmails_();
+    if (managers.length > 0) {
+      const subject = 'Procedury: blad kontroli Klienci_Procedury';
+      const body =
+        'Podczas wykonywania kontroli arkusza Klienci_Procedury wystapil blad.\n\n' +
+        'Szczegoly: ' +
+        ((err && (err.message || err.toString())) || String(err)) +
+        '\n\n' +
+        'Sprawdz logi Apps Script (Executions) w projekcie „Procedury”.';
+      managers.forEach(function(email) {
+        try {
+          MailApp.sendEmail(email, subject, body);
+        } catch (e2) {
+          // Ignoruj bledy wysylki powiadomienia o bledzie.
+        }
+      });
+    }
+  }
 }
 
 function getTasksDueTodayOrOverdueByEmployee_(todayKey) {
@@ -152,6 +176,22 @@ function getEmployeeEmailMap_() {
     }
   }
   return map;
+}
+
+/**
+ * Zwraca adresy email uzytkownikow z rola „manager” z arkusza Pracownicy.
+ */
+function getManagerEmails_() {
+  const rows = getObjectRows_(SHEET_NAMES.EMPLOYEES);
+  const emails = [];
+  rows.forEach(function(row) {
+    const role = normalizeLookupKey_(row.rola);
+    const email = normalizeText_(row.email);
+    if (role === 'manager' && email && email.indexOf('@') !== -1) {
+      emails.push(email);
+    }
+  });
+  return emails;
 }
 
 function employeeLookupKey_(name) {
