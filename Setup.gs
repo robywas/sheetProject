@@ -159,6 +159,7 @@ function applyFormatting_() {
   taskSheet.getRange('G:G').setNumberFormat('yyyy-mm-dd hh:mm');
   taskSheet.getRange('K:K').setNumberFormat('yyyy-mm-dd hh:mm');
   taskSheet.hideColumns(1);
+  taskSheet.hideColumns(TASKS_COL.DNI_OSTRZEZENIA, 2); // dni_ostrzezenia, created_at
   taskSheet.setColumnWidth(2, 200); // kolumna klient (Zadania)
 
   const clientsSheet = getSheetOrThrow_(SHEET_NAMES.CLIENTS);
